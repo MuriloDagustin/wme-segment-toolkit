@@ -52,6 +52,10 @@ export interface Messages {
         nothingSelected: string;
         expanded: (count: number) => string;
     };
+    tabs: {
+        speed: string;
+        selection: string;
+    };
 }
 
 const EN: Messages = {
@@ -104,6 +108,10 @@ const EN: Messages = {
         nothingSelected: 'Select a segment first.',
         expanded: (n) => `Selected ${n} segment(s) of the same street.`,
     },
+    tabs: {
+        speed: 'Speed',
+        selection: 'Selection',
+    },
 };
 
 const PT: Messages = {
@@ -155,6 +163,10 @@ const PT: Messages = {
             'Expandir seleção para todos os segmentos conectados cujo nome principal ou alternativo casa com o da selecionada. Atravessa rotatórias, mas pode pegar ruas distintas com o mesmo nome.',
         nothingSelected: 'Selecione um segmento antes.',
         expanded: (n) => `Selecionados ${n} segmento(s) da mesma rua.`,
+    },
+    tabs: {
+        speed: 'Velocidades',
+        selection: 'Seleção',
     },
 };
 
