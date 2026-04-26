@@ -75,6 +75,9 @@ const PROFILES: Record<string, CountryProfile> = {
     DEFAULT: DEFAULT_PROFILE,
 };
 
+/** Ordered list of all selectable country profiles (excluding the implicit fallback). */
+export const AVAILABLE_PROFILES: CountryProfile[] = [BR_PROFILE, DEFAULT_PROFILE];
+
 export function getCountryProfile(abbr: string | null | undefined): CountryProfile {
     if (!abbr) return DEFAULT_PROFILE;
     return PROFILES[abbr.toUpperCase()] ?? DEFAULT_PROFILE;

@@ -1,5 +1,5 @@
 import type { WmeSDK, Segment, SdkFeature, RoadTypeId } from 'wme-sdk-typings';
-import { getCountryProfile, type CountryProfile } from './countries';
+import { getCountryProfile, AVAILABLE_PROFILES, type CountryProfile } from './countries';
 import { getMessages, pickLocale, type Messages } from './i18n';
 import styles from './styles.css?inline';
 
@@ -9,6 +9,7 @@ const LAYER_NAME = 'wme-speed-limit-validator';
 const STORAGE_KEY = 'wme-speed-limit-validator:config:v2';
 
 type Operator = '==' | '!=' | '>' | '>=' | '<' | '<=' | 'unset';
+type VerifiedFilter = 'any' | 'verified' | 'unverified';
 
 interface Rule {
     id: string;
@@ -17,18 +18,23 @@ interface Rule {
     operator: Operator;
     speedKmh: number;
     color: string;
+    verifiedFilter?: VerifiedFilter; // default: 'any'
 }
 
 interface Config {
     rules: Rule[];
+    /** User-selected country code; 'auto' or undefined means auto-detect. */
+    selectedCountry?: string;
 }
 
 const OPERATORS: Operator[] = ['==', '!=', '>', '>=', '<', '<=', 'unset'];
+const VERIFIED_FILTERS: VerifiedFilter[] = ['any', 'verified', 'unverified'];
 
 let sdk: WmeSDK | null = null;
 let debugMode = false;
 let config: Config = loadConfig();
 let countryProfile: CountryProfile;
+let detectedCountryAbbr: string | null = null;
 let messages: Messages;
 
 let matchCounts: Record<string, number> = {};
@@ -128,13 +134,20 @@ function classify(seg: Segment): { color: string; ruleId: string | null } | null
     // A one-way A->B has only isAtoB = true (and revSpeedLimit is naturally null).
     const fwdActive = seg.isAtoB === true;
     const revActive = seg.isBtoA === true;
+    const fwdVerified = seg.isFwdSpeedLimitVerified === true;
+    const revVerified = seg.isRevSpeedLimitVerified === true;
+
+    function passesVerifiedFilter(filter: VerifiedFilter | undefined, isVerified: boolean): boolean {
+        if (!filter || filter === 'any') return true;
+        return filter === 'verified' ? isVerified : !isVerified;
+    }
 
     for (const rule of config.rules) {
         if (!rule.enabled) continue;
         if (seg.roadType !== rule.roadType) continue;
 
         if (rule.operator === 'unset') {
-            // Match if any *active* direction is missing its speed limit.
+            // 'unset' ignores the verified filter (a null limit has no verification state).
             const fwdMissing = fwdActive && (fwd === null || fwd === undefined);
             const revMissing = revActive && (rev === null || rev === undefined);
             if (fwdMissing || revMissing) {
@@ -144,9 +157,15 @@ function classify(seg: Segment): { color: string; ruleId: string | null } | null
         }
 
         const fwdMatches =
-            fwdActive && typeof fwd === 'number' && compare(fwd, rule.operator, rule.speedKmh);
+            fwdActive &&
+            typeof fwd === 'number' &&
+            compare(fwd, rule.operator, rule.speedKmh) &&
+            passesVerifiedFilter(rule.verifiedFilter, fwdVerified);
         const revMatches =
-            revActive && typeof rev === 'number' && compare(rev, rule.operator, rule.speedKmh);
+            revActive &&
+            typeof rev === 'number' &&
+            compare(rev, rule.operator, rule.speedKmh) &&
+            passesVerifiedFilter(rule.verifiedFilter, revVerified);
 
         if (fwdMatches || revMatches) {
             return { color: rule.color, ruleId: rule.id };
@@ -311,12 +330,29 @@ function createRuleRow(rule: Rule, onChange: () => void, onRemove: () => void): 
     speedSuffix.className = 'wme-vbr-vel-suffix';
     speedSuffix.textContent = messages.speedSuffix;
 
+    const verifiedSelect = document.createElement('select');
+    verifiedSelect.className = 'wme-vbr-verified';
+    verifiedSelect.title = messages.verifiedFilter.title;
+    for (const f of VERIFIED_FILTERS) {
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = messages.verifiedFilter[f];
+        if ((rule.verifiedFilter ?? 'any') === f) opt.selected = true;
+        verifiedSelect.appendChild(opt);
+    }
+    verifiedSelect.addEventListener('change', () => {
+        rule.verifiedFilter = verifiedSelect.value as VerifiedFilter;
+        onChange();
+    });
+
     function updateOperatorUi(): void {
         const isUnset = rule.operator === 'unset';
         speedInput.classList.toggle('hidden', isUnset);
         speedSuffix.classList.toggle('hidden', isUnset);
+        // Verified filter has no meaning for the 'unset' operator
+        // (a null speed limit has no verification state).
+        extra.classList.toggle('hidden', isUnset);
     }
-    updateOperatorUi();
 
     const colorInput = document.createElement('input');
     colorInput.type = 'color';
@@ -334,8 +370,22 @@ function createRuleRow(rule: Rule, onChange: () => void, onRemove: () => void): 
     bottom.appendChild(speedSuffix);
     bottom.appendChild(colorInput);
 
+    // Extra row: verified-filter selector with its own label.
+    const extra = document.createElement('div');
+    extra.className = 'wme-vbr-row-extra';
+
+    const verifiedLabel = document.createElement('span');
+    verifiedLabel.className = 'wme-vbr-verified-label';
+    verifiedLabel.textContent = `${messages.verifiedFilter.title}:`;
+
+    extra.appendChild(verifiedLabel);
+    extra.appendChild(verifiedSelect);
+
     row.appendChild(top);
     row.appendChild(bottom);
+    row.appendChild(extra);
+
+    updateOperatorUi();
 
     let lastCount = 0;
 
@@ -416,6 +466,46 @@ async function buildPanel(): Promise<void> {
     description.innerHTML = messages.panelDescription;
     tabPane.appendChild(description);
 
+    // Country selector
+    const countryRow = document.createElement('div');
+    Object.assign(countryRow.style, {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        margin: '0 0 10px 0',
+    } as CSSStyleDeclaration);
+
+    const countryLabel = document.createElement('span');
+    countryLabel.style.fontSize = '12px';
+    countryLabel.style.fontWeight = '600';
+    countryLabel.textContent = `${messages.country.label}:`;
+
+    const countrySelect = document.createElement('select');
+    countrySelect.style.flex = '1';
+    countrySelect.style.fontSize = '12px';
+    countrySelect.style.padding = '3px 4px';
+    countrySelect.style.border = '1px solid #ccc';
+    countrySelect.style.borderRadius = '4px';
+
+    const autoOpt = document.createElement('option');
+    autoOpt.value = 'auto';
+    autoOpt.textContent = messages.country.auto(detectedCountryAbbr ?? '');
+    countrySelect.appendChild(autoOpt);
+
+    for (const profile of AVAILABLE_PROFILES) {
+        const opt = document.createElement('option');
+        opt.value = profile.abbr;
+        opt.textContent = `${profile.name} (${profile.abbr})`;
+        countrySelect.appendChild(opt);
+    }
+    countrySelect.value = config.selectedCountry ?? 'auto';
+
+    countryRow.appendChild(countryLabel);
+    countryRow.appendChild(countrySelect);
+    tabPane.appendChild(countryRow);
+
+    // (handler is wired below once rulesContainer/totalEl exist)
+
     // Debug switch
     const debugRow = document.createElement('div');
     Object.assign(debugRow.style, {
@@ -454,6 +544,17 @@ async function buildPanel(): Promise<void> {
     } as CSSStyleDeclaration);
     totalEl.textContent = messages.totalHighlighted(0);
     tabPane.appendChild(totalEl);
+
+    countrySelect.addEventListener('change', () => {
+        const value = countrySelect.value;
+        config.selectedCountry = value === 'auto' ? undefined : value;
+        const effectiveAbbr =
+            value === 'auto' ? detectedCountryAbbr : value;
+        countryProfile = getCountryProfile(effectiveAbbr);
+        saveConfig();
+        renderRules(rulesContainer, totalEl);
+        refreshHighlights();
+    });
 
     renderRules(rulesContainer, totalEl);
 
@@ -504,7 +605,11 @@ async function buildPanel(): Promise<void> {
 // Bootstrap
 // ===========================================================================
 
-function detectContext(activeSdk: WmeSDK): { profile: CountryProfile; messages: Messages } {
+function detectContext(activeSdk: WmeSDK): {
+    detectedAbbr: string | null;
+    profile: CountryProfile;
+    messages: Messages;
+} {
     let countryAbbr: string | null = null;
     try {
         countryAbbr = activeSdk.DataModel.Countries.getTopCountry()?.abbr ?? null;
@@ -519,8 +624,13 @@ function detectContext(activeSdk: WmeSDK): { profile: CountryProfile; messages: 
         // ignored
     }
 
+    const selected = config.selectedCountry;
+    const effectiveAbbr =
+        selected && selected !== 'auto' ? selected : countryAbbr;
+
     return {
-        profile: getCountryProfile(countryAbbr),
+        detectedAbbr: countryAbbr,
+        profile: getCountryProfile(effectiveAbbr),
         messages: getMessages(pickLocale(localeCode)),
     };
 }
@@ -589,6 +699,7 @@ async function bootstrap(): Promise<void> {
     await wmeSdk.Events.once({ eventName: 'wme-ready' });
 
     const ctx = detectContext(wmeSdk);
+    detectedCountryAbbr = ctx.detectedAbbr;
     countryProfile = ctx.profile;
     messages = ctx.messages;
 

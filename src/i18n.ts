@@ -11,6 +11,10 @@ export interface Messages {
     panelTitle: string;
     panelDescription: string;
     debugToggle: string;
+    country: {
+        label: string;
+        auto: (detectedAbbr: string) => string;
+    };
     addRule: string;
     resetRules: string;
     confirmReset: string;
@@ -24,6 +28,12 @@ export interface Messages {
     };
     operator: {
         unset: string;
+    };
+    verifiedFilter: {
+        title: string;
+        any: string;
+        verified: string;
+        unverified: string;
     };
     speedSuffix: string;
     badgeTitle: string;
@@ -44,6 +54,10 @@ const EN: Messages = {
         'Configure rules per road type, operator, speed (km/h) and color. ' +
         'A segment is highlighted if <i>any</i> active rule matches its forward or reverse speed.',
     debugToggle: 'Debug (paint everything blue)',
+    country: {
+        label: 'Country',
+        auto: (abbr) => `Auto-detect${abbr ? ` (${abbr})` : ''}`,
+    },
     addRule: '+ Add rule',
     resetRules: 'Reset to defaults',
     confirmReset: 'Reset configuration to defaults?',
@@ -57,6 +71,12 @@ const EN: Messages = {
     },
     operator: {
         unset: 'no limit',
+    },
+    verifiedFilter: {
+        title: 'Verification filter',
+        any: 'Any',
+        verified: 'Verified',
+        unverified: 'Unverified',
     },
     speedSuffix: 'km/h',
     badgeTitle: 'Visible segments matching this rule',
@@ -77,6 +97,10 @@ const PT: Messages = {
         'Configure regras por tipo de via, operador, velocidade (km/h) e cor. ' +
         'Um segmento é destacado se <i>qualquer</i> regra ativa casar com a velocidade fwd ou rev.',
     debugToggle: 'Debug (pintar tudo de azul)',
+    country: {
+        label: 'País',
+        auto: (abbr) => `Auto${abbr ? ` (${abbr})` : ''}`,
+    },
     addRule: '+ Adicionar regra',
     resetRules: 'Restaurar padrões',
     confirmReset: 'Restaurar configuração padrão?',
@@ -90,6 +114,12 @@ const PT: Messages = {
     },
     operator: {
         unset: 'sem limite',
+    },
+    verifiedFilter: {
+        title: 'Filtro de verificação',
+        any: 'Qualquer',
+        verified: 'Verificado',
+        unverified: 'Não verificado',
     },
     speedSuffix: 'km/h',
     badgeTitle: 'Segmentos visíveis que casam esta regra',

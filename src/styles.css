@@ -16,6 +16,19 @@
     gap: 8px;
 }
 
+.wme-vbr-row-extra {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 4px;
+}
+
+.wme-vbr-verified-label {
+    font-size: 11px;
+    color: #666;
+    flex-shrink: 0;
+}
+
 .wme-vbr-row-top > .wme-vbr-roadtype {
     flex: 1;
     min-width: 0;
@@ -114,6 +127,11 @@
 .wme-vbr-row select.wme-vbr-op {
     width: auto;
     min-width: 56px;
+}
+
+.wme-vbr-row select.wme-vbr-verified {
+    width: auto;
+    max-width: 110px;
 }
 
 .hidden {
