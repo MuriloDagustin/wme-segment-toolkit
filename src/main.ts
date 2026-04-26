@@ -45,6 +45,9 @@ const DEFAULT_CONFIG: Config = {
 let sdk: WmeSDK | null = null;
 let modoDebug = false;
 let config: Config = carregarConfig();
+let contagens: Record<string, number> = {};
+let contagemDebug = 0;
+let onContagensAtualizadas: (() => void) | null = null;
 
 function clonar<T>(v: T): T {
     return JSON.parse(JSON.stringify(v)) as T;
@@ -85,8 +88,8 @@ function compara(a: number, op: Operador, b: number): boolean {
     }
 }
 
-function classificar(seg: Segment): string | null {
-    if (modoDebug) return '#00BFFF';
+function classificar(seg: Segment): { cor: string; ruleId: string | null } | null {
+    if (modoDebug) return { cor: '#00BFFF', ruleId: null };
     const fwd = seg.fwdSpeedLimit ?? 0;
     const rev = seg.revSpeedLimit ?? 0;
 
@@ -94,7 +97,7 @@ function classificar(seg: Segment): string | null {
         if (!r.enabled) continue;
         if (seg.roadType !== r.roadType) continue;
         if (compara(fwd, r.operador, r.velocidade) || compara(rev, r.operador, r.velocidade)) {
-            return r.cor;
+            return { cor: r.cor, ruleId: r.id };
         }
     }
     return null;
@@ -104,21 +107,33 @@ function verificarVelocidades(): void {
     if (!sdk) return;
     sdk.Map.removeAllFeaturesFromLayer({ layerName: LAYER_NAME });
 
+    contagens = {};
+    contagemDebug = 0;
+
     const features: SdkFeature[] = [];
     for (const seg of sdk.DataModel.Segments.getAll()) {
-        const cor = classificar(seg);
-        if (!cor || !seg.geometry) continue;
+        const r = classificar(seg);
+        if (!r || !seg.geometry) continue;
+
+        if (modoDebug) {
+            contagemDebug++;
+        } else if (r.ruleId) {
+            contagens[r.ruleId] = (contagens[r.ruleId] ?? 0) + 1;
+        }
+
         features.push({
             type: 'Feature',
             id: seg.id,
             geometry: seg.geometry,
-            properties: { id: seg.id, color: cor },
+            properties: { id: seg.id, color: r.cor },
         });
     }
 
     if (features.length > 0) {
         sdk.Map.addFeaturesToLayer({ features, layerName: LAYER_NAME });
     }
+
+    onContagensAtualizadas?.();
 }
 
 function estilizarBotao(btn: HTMLButtonElement): void {
@@ -132,11 +147,11 @@ function estilizarBotao(btn: HTMLButtonElement): void {
     } as CSSStyleDeclaration);
 }
 
-function criarLinhaRegra(regra: Regra, onChange: () => void, onRemove: () => void): HTMLElement {
+function criarLinhaRegra(regra: Regra, onChange: () => void, onRemove: () => void): { el: HTMLElement; atualizarContagem: (n: number) => void } {
     const linha = document.createElement('div');
     Object.assign(linha.style, {
         display: 'grid',
-        gridTemplateColumns: 'auto 1fr auto auto auto auto',
+        gridTemplateColumns: 'auto 1fr auto auto auto auto auto',
         gap: '4px',
         alignItems: 'center',
         padding: '4px 0',
@@ -220,22 +235,46 @@ function criarLinhaRegra(regra: Regra, onChange: () => void, onRemove: () => voi
     } as CSSStyleDeclaration);
     btnDel.addEventListener('click', onRemove);
 
+    const badge = document.createElement('span');
+    Object.assign(badge.style, {
+        display: 'inline-block',
+        minWidth: '24px',
+        textAlign: 'center',
+        fontSize: '10px',
+        fontWeight: 'bold',
+        padding: '2px 6px',
+        borderRadius: '10px',
+        background: '#eee',
+        color: '#333',
+    } as CSSStyleDeclaration);
+    badge.textContent = '0';
+    badge.title = 'Segmentos visíveis que casam esta regra';
+
     linha.appendChild(chk);
     linha.appendChild(selRoad);
     linha.appendChild(selOp);
     linha.appendChild(inpVel);
     linha.appendChild(inpCor);
+    linha.appendChild(badge);
     linha.appendChild(btnDel);
-    return linha;
+
+    return {
+        el: linha,
+        atualizarContagem: (n: number) => {
+            badge.textContent = String(n);
+            badge.style.background = n > 0 ? regra.cor : '#eee';
+            badge.style.color = n > 0 ? '#fff' : '#333';
+        },
+    };
 }
 
-function renderizarRegras(container: HTMLElement): void {
+function renderizarRegras(container: HTMLElement, totalEl: HTMLElement): void {
     container.innerHTML = '';
 
     const cabecalho = document.createElement('div');
     Object.assign(cabecalho.style, {
         display: 'grid',
-        gridTemplateColumns: 'auto 1fr auto auto auto auto',
+        gridTemplateColumns: 'auto 1fr auto auto auto auto auto',
         gap: '4px',
         alignItems: 'center',
         fontSize: '10px',
@@ -244,7 +283,7 @@ function renderizarRegras(container: HTMLElement): void {
         padding: '4px 0',
         borderBottom: '2px solid #ccc',
     } as CSSStyleDeclaration);
-    for (const txt of ['', 'Tipo de via', 'Op', 'km/h', 'Cor', '']) {
+    for (const txt of ['', 'Tipo de via', 'Op', 'km/h', 'Cor', 'Qtd', '']) {
         const c = document.createElement('div');
         c.textContent = txt;
         cabecalho.appendChild(c);
@@ -253,15 +292,31 @@ function renderizarRegras(container: HTMLElement): void {
 
     const reagir = () => { salvarConfig(); verificarVelocidades(); };
 
+    const handlersContagem: { ruleId: string; atualizar: (n: number) => void }[] = [];
+
     for (const regra of config.regras) {
-        const linha = criarLinhaRegra(regra, reagir, () => {
+        const { el, atualizarContagem } = criarLinhaRegra(regra, reagir, () => {
             config.regras = config.regras.filter((r) => r.id !== regra.id);
             salvarConfig();
-            renderizarRegras(container);
+            renderizarRegras(container, totalEl);
             verificarVelocidades();
         });
-        container.appendChild(linha);
+        container.appendChild(el);
+        handlersContagem.push({ ruleId: regra.id, atualizar: atualizarContagem });
     }
+
+    onContagensAtualizadas = () => {
+        for (const h of handlersContagem) {
+            h.atualizar(contagens[h.ruleId] ?? 0);
+        }
+        const total = modoDebug
+            ? contagemDebug
+            : Object.values(contagens).reduce((a, b) => a + b, 0);
+        totalEl.textContent = modoDebug
+            ? `Debug: ${total} segmento(s) na vista`
+            : `Total: ${total} segmento(s) destacado(s)`;
+    };
+    onContagensAtualizadas();
 }
 
 async function criarMenuInterativo(): Promise<void> {
@@ -307,7 +362,20 @@ async function criarMenuInterativo(): Promise<void> {
     const containerRegras = document.createElement('div');
     containerRegras.style.margin = '0 0 8px 0';
     tabPane.appendChild(containerRegras);
-    renderizarRegras(containerRegras);
+
+    const totalEl = document.createElement('div');
+    Object.assign(totalEl.style, {
+        fontSize: '11px',
+        color: '#333',
+        margin: '6px 0 8px 0',
+        padding: '4px 8px',
+        background: '#f0f0f0',
+        borderRadius: '4px',
+    } as CSSStyleDeclaration);
+    totalEl.textContent = 'Total: 0 segmento(s) destacado(s)';
+    tabPane.appendChild(totalEl);
+
+    renderizarRegras(containerRegras, totalEl);
 
     const botoes = document.createElement('div');
     botoes.style.display = 'flex';
@@ -327,7 +395,7 @@ async function criarMenuInterativo(): Promise<void> {
             cor: '#00AAFF',
         });
         salvarConfig();
-        renderizarRegras(containerRegras);
+        renderizarRegras(containerRegras, totalEl);
         verificarVelocidades();
     });
 
@@ -339,7 +407,7 @@ async function criarMenuInterativo(): Promise<void> {
         if (!confirm('Restaurar configuração padrão?')) return;
         config = clonar(DEFAULT_CONFIG);
         salvarConfig();
-        renderizarRegras(containerRegras);
+        renderizarRegras(containerRegras, totalEl);
         verificarVelocidades();
     });
 
