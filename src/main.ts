@@ -1,83 +1,53 @@
 import type { WmeSDK, Segment, SdkFeature, RoadTypeId } from 'wme-sdk-typings';
+import { getCountryProfile, type CountryProfile, type RoadTypeEntry } from './countries';
+import { getMessages, pickLocale, type Messages } from './i18n';
+import styles from './styles.css?inline';
 
 const SCRIPT_ID = 'wme-validador-vel-br';
-const SCRIPT_NAME = 'Validador de Velocidades BR';
-const LAYER_NAME = 'wme-validador-velocidades-br';
-const STORAGE_KEY = 'wme-validador-vel-br:config:v1';
+const SCRIPT_NAME = 'WME Speed Limit Validator';
+const LAYER_NAME = 'wme-speed-limit-validator';
+const STORAGE_KEY = 'wme-speed-limit-validator:config:v2';
 
-type Operador = '==' | '!=' | '>' | '>=' | '<' | '<=';
+type Operator = '==' | '!=' | '>' | '>=' | '<' | '<=';
 
-interface Regra {
+interface Rule {
     id: string;
     enabled: boolean;
     roadType: RoadTypeId;
-    operador: Operador;
-    velocidade: number;
-    cor: string;
+    operator: Operator;
+    speedKmh: number;
+    color: string;
 }
 
 interface Config {
-    regras: Regra[];
+    rules: Rule[];
 }
 
-const ROAD_TYPES: { id: RoadTypeId; nome: string }[] = [
-    { id: 1, nome: 'Rua' },
-    { id: 2, nome: 'Via Principal' },
-    { id: 3, nome: 'Autoestrada' },
-    { id: 4, nome: 'Rampa' },
-    { id: 6, nome: 'Rodovia (Major)' },
-    { id: 7, nome: 'Rodovia (Minor)' },
-    { id: 8, nome: 'Off-road' },
-    { id: 17, nome: 'Estrada Privada' },
-    { id: 20, nome: 'Estacionamento' },
-    { id: 22, nome: 'Beco' },
-];
-
-const OPERADORES: Operador[] = ['==', '!=', '>', '>=', '<', '<='];
-
-const DEFAULT_CONFIG: Config = {
-    regras: [
-        { id: 'default-1', enabled: true, roadType: 2, operador: '==', velocidade: 30, cor: '#FF0000' },
-        { id: 'default-2', enabled: true, roadType: 1, operador: '>', velocidade: 30, cor: '#FFA500' },
-    ],
-};
+const OPERATORS: Operator[] = ['==', '!=', '>', '>=', '<', '<='];
 
 let sdk: WmeSDK | null = null;
-let modoDebug = false;
-let config: Config = carregarConfig();
-let contagens: Record<string, number> = {};
-let contagemDebug = 0;
-let onContagensAtualizadas: (() => void) | null = null;
+let debugMode = false;
+let config: Config = loadConfig();
+let countryProfile: CountryProfile;
+let messages: Messages;
 
-function clonar<T>(v: T): T {
-    return JSON.parse(JSON.stringify(v)) as T;
+let matchCounts: Record<string, number> = {};
+let debugCount = 0;
+let onCountsUpdated: (() => void) | null = null;
+
+// ===========================================================================
+// Helpers
+// ===========================================================================
+
+function clone<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function carregarConfig(): Config {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return clonar(DEFAULT_CONFIG);
-        const parsed = JSON.parse(raw) as Config;
-        if (!parsed?.regras || !Array.isArray(parsed.regras)) return clonar(DEFAULT_CONFIG);
-        return parsed;
-    } catch {
-        return clonar(DEFAULT_CONFIG);
-    }
-}
-
-function salvarConfig(): void {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-    } catch (e) {
-        console.error(`[${SCRIPT_NAME}] erro ao salvar config:`, e);
-    }
-}
-
-function novoId(): string {
+function newId(): string {
     return `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function compara(a: number, op: Operador, b: number): boolean {
+function compare(a: number, op: Operator, b: number): boolean {
     switch (op) {
         case '==': return a === b;
         case '!=': return a !== b;
@@ -88,44 +58,107 @@ function compara(a: number, op: Operador, b: number): boolean {
     }
 }
 
-function classificar(seg: Segment): { cor: string; ruleId: string | null } | null {
-    if (modoDebug) return { cor: '#00BFFF', ruleId: null };
+function defaultConfig(profile: CountryProfile): Config {
+    // Brazil: Primary Street (Coletora) at 30 km/h is suspicious -> red.
+    //         Local (Street) above 30 km/h is suspicious -> orange.
+    // Other countries: Primary Street at 30 -> red, Street above 30 -> orange (generic heuristic).
+    const hasStreet = profile.roadTypes.some((r) => r.id === 1);
+    const hasPrimary = profile.roadTypes.some((r) => r.id === 2);
+    const rules: Rule[] = [];
+    if (hasPrimary) {
+        rules.push({
+            id: 'default-primary',
+            enabled: true,
+            roadType: 2,
+            operator: '==',
+            speedKmh: 30,
+            color: '#FF0000',
+        });
+    }
+    if (hasStreet) {
+        rules.push({
+            id: 'default-street',
+            enabled: true,
+            roadType: 1,
+            operator: '>',
+            speedKmh: 30,
+            color: '#FFA500',
+        });
+    }
+    return { rules };
+}
+
+function loadConfig(): Config {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { rules: [] };
+        const parsed = JSON.parse(raw) as Config;
+        if (!parsed?.rules || !Array.isArray(parsed.rules)) return { rules: [] };
+        return parsed;
+    } catch {
+        return { rules: [] };
+    }
+}
+
+function saveConfig(): void {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    } catch (e) {
+        console.error(`[${SCRIPT_NAME}] ${messages.saveError}`, e);
+    }
+}
+
+function findRoadTypeLabel(id: RoadTypeId): string {
+    const entry = countryProfile.roadTypes.find((r) => r.id === id);
+    return entry ? entry.label : `#${id}`;
+}
+
+// ===========================================================================
+// Classification & rendering
+// ===========================================================================
+
+function classify(seg: Segment): { color: string; ruleId: string | null } | null {
+    if (debugMode) return { color: '#00BFFF', ruleId: null };
+
     const fwd = seg.fwdSpeedLimit ?? 0;
     const rev = seg.revSpeedLimit ?? 0;
 
-    for (const r of config.regras) {
-        if (!r.enabled) continue;
-        if (seg.roadType !== r.roadType) continue;
-        if (compara(fwd, r.operador, r.velocidade) || compara(rev, r.operador, r.velocidade)) {
-            return { cor: r.cor, ruleId: r.id };
+    for (const rule of config.rules) {
+        if (!rule.enabled) continue;
+        if (seg.roadType !== rule.roadType) continue;
+        if (
+            compare(fwd, rule.operator, rule.speedKmh) ||
+            compare(rev, rule.operator, rule.speedKmh)
+        ) {
+            return { color: rule.color, ruleId: rule.id };
         }
     }
     return null;
 }
 
-function verificarVelocidades(): void {
+function refreshHighlights(): void {
     if (!sdk) return;
     sdk.Map.removeAllFeaturesFromLayer({ layerName: LAYER_NAME });
 
-    contagens = {};
-    contagemDebug = 0;
+    matchCounts = {};
+    debugCount = 0;
 
     const features: SdkFeature[] = [];
     for (const seg of sdk.DataModel.Segments.getAll()) {
-        const r = classificar(seg);
-        if (!r || !seg.geometry) continue;
+        const result = classify(seg);
+        if (!result || !seg.geometry) continue;
 
-        if (modoDebug) {
-            contagemDebug++;
-        } else if (r.ruleId) {
-            contagens[r.ruleId] = (contagens[r.ruleId] ?? 0) + 1;
+        if (debugMode) {
+            debugCount++;
+        } else if (result.ruleId) {
+            matchCounts[result.ruleId] = (matchCounts[result.ruleId] ?? 0) + 1;
         }
 
         features.push({
             type: 'Feature',
             id: seg.id,
             geometry: seg.geometry,
-            properties: { id: seg.id, color: r.cor },
+            properties: { id: seg.id, color: result.color },
         });
     }
 
@@ -133,140 +166,30 @@ function verificarVelocidades(): void {
         sdk.Map.addFeaturesToLayer({ features, layerName: LAYER_NAME });
     }
 
-    onContagensAtualizadas?.();
+    onCountsUpdated?.();
 }
 
-function estilizarBotao(btn: HTMLButtonElement): void {
-    Object.assign(btn.style, {
-        fontSize: '11px',
-        padding: '4px 8px',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-        background: '#f5f5f5',
-        cursor: 'pointer',
-    } as CSSStyleDeclaration);
-}
+// ===========================================================================
+// UI
+// ===========================================================================
 
-function injetarEstilos(): void {
-    const ID = 'wme-validador-styles';
+function injectStyles(): void {
+    const ID = 'wme-speed-validator-styles';
     if (document.getElementById(ID)) return;
 
     const style = document.createElement('style');
     style.id = ID;
-    style.textContent = `
-.wme-vbr-row {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 8px;
-    margin-bottom: 6px;
-    background: #fafafa;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-}
-.wme-vbr-row-top, .wme-vbr-row-bottom {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.wme-vbr-row-top > .wme-vbr-roadtype { flex: 1; min-width: 0; }
-.wme-vbr-row-bottom { padding-left: 4px; }
-.wme-vbr-row-bottom > .wme-vbr-op { flex: 0 0 auto; }
-.wme-vbr-row-bottom > .wme-vbr-vel { flex: 1; min-width: 60px; }
-
-/* iOS-style switch */
-.wme-vbr-switch {
-    position: relative;
-    display: inline-block;
-    width: 36px;
-    height: 20px;
-    flex-shrink: 0;
-}
-.wme-vbr-switch input { opacity: 0; width: 0; height: 0; }
-.wme-vbr-switch .slider {
-    position: absolute;
-    cursor: pointer;
-    inset: 0;
-    background: #ccc;
-    border-radius: 20px;
-    transition: background .2s;
-}
-.wme-vbr-switch .slider::before {
-    content: "";
-    position: absolute;
-    height: 16px;
-    width: 16px;
-    left: 2px;
-    bottom: 2px;
-    background: white;
-    border-radius: 50%;
-    transition: transform .2s;
-    box-shadow: 0 1px 2px rgba(0,0,0,.3);
-}
-.wme-vbr-switch input:checked + .slider { background: #34c759; }
-.wme-vbr-switch input:checked + .slider::before { transform: translateX(16px); }
-
-.wme-vbr-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 26px;
-    height: 20px;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 0 8px;
-    border-radius: 10px;
-    color: #fff;
-    background: #999;
-    flex-shrink: 0;
-}
-.wme-vbr-badge.hidden { display: none; }
-
-.wme-vbr-row select,
-.wme-vbr-row input[type="number"] {
-    font-size: 12px;
-    padding: 3px 4px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background: white;
-    box-sizing: border-box;
-}
-.wme-vbr-row select.wme-vbr-roadtype { width: 100%; }
-.wme-vbr-row input[type="number"].wme-vbr-vel { width: 100%; }
-.wme-vbr-row select.wme-vbr-op { width: 56px; }
-
-.wme-vbr-color {
-    width: 36px;
-    height: 26px;
-    padding: 0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    cursor: pointer;
-    background: transparent;
-    flex-shrink: 0;
-}
-.wme-vbr-del {
-    background: transparent;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    cursor: pointer;
-    width: 26px;
-    height: 26px;
-    line-height: 18px;
-    padding: 0;
-    font-size: 16px;
-    flex-shrink: 0;
-}
-.wme-vbr-del:hover { background: #fee; border-color: #f99; }
-.wme-vbr-vel-suffix { font-size: 11px; color: #666; flex-shrink: 0; }
-`;
+    style.textContent = styles;
     document.head.appendChild(style);
 }
 
-function criarSwitch(checked: boolean, onChange: (v: boolean) => void): { wrapper: HTMLElement; input: HTMLInputElement } {
+function createSwitch(checked: boolean, onChange: (v: boolean) => void, title?: string): {
+    wrapper: HTMLElement;
+    input: HTMLInputElement;
+} {
     const wrapper = document.createElement('label');
     wrapper.className = 'wme-vbr-switch';
-    wrapper.title = 'Ativar/desativar regra';
+    if (title) wrapper.title = title;
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.checked = checked;
@@ -278,205 +201,221 @@ function criarSwitch(checked: boolean, onChange: (v: boolean) => void): { wrappe
     return { wrapper, input };
 }
 
-function criarLinhaRegra(regra: Regra, onChange: () => void, onRemove: () => void): { el: HTMLElement; atualizarContagem: (n: number) => void } {
-    const linha = document.createElement('div');
-    linha.className = 'wme-vbr-row';
+function createRoadTypeSelect(selected: RoadTypeId, onChange: (id: RoadTypeId) => void): HTMLSelectElement {
+    const select = document.createElement('select');
+    select.className = 'wme-vbr-roadtype';
+    for (const entry of countryProfile.roadTypes) {
+        const opt = document.createElement('option');
+        opt.value = String(entry.id);
+        opt.textContent = entry.label;
+        if (entry.id === selected) opt.selected = true;
+        select.appendChild(opt);
+    }
+    select.addEventListener('change', () => onChange(Number(select.value) as RoadTypeId));
+    return select;
+}
 
-    // ===== Linha de cima: switch + badge + tipo de via + remover =====
+interface RuleRowHandle {
+    el: HTMLElement;
+    setCount: (n: number) => void;
+}
+
+function createRuleRow(rule: Rule, onChange: () => void, onRemove: () => void): RuleRowHandle {
+    const row = document.createElement('div');
+    row.className = 'wme-vbr-row';
+
+    // Top row: switch + badge + road type + delete
     const top = document.createElement('div');
     top.className = 'wme-vbr-row-top';
 
-    const sw = criarSwitch(regra.enabled, (v) => {
-        regra.enabled = v;
-        atualizarVisibilidadeBadge();
+    const sw = createSwitch(rule.enabled, (v) => {
+        rule.enabled = v;
+        updateBadgeVisibility();
         onChange();
-    });
+    }, messages.toggleRule);
 
     const badge = document.createElement('span');
     badge.className = 'wme-vbr-badge hidden';
     badge.textContent = '0';
-    badge.title = 'Segmentos visíveis que casam esta regra';
+    badge.title = messages.badgeTitle;
 
-    const selRoad = document.createElement('select');
-    selRoad.className = 'wme-vbr-roadtype';
-    for (const rt of ROAD_TYPES) {
-        const opt = document.createElement('option');
-        opt.value = String(rt.id);
-        opt.textContent = rt.nome;
-        if (rt.id === regra.roadType) opt.selected = true;
-        selRoad.appendChild(opt);
-    }
-    selRoad.addEventListener('change', () => {
-        regra.roadType = Number(selRoad.value) as RoadTypeId;
+    const roadSelect = createRoadTypeSelect(rule.roadType, (id) => {
+        rule.roadType = id;
         onChange();
     });
 
-    const btnDel = document.createElement('button');
-    btnDel.type = 'button';
-    btnDel.className = 'wme-vbr-del';
-    btnDel.textContent = '×';
-    btnDel.title = 'Remover regra';
-    btnDel.addEventListener('click', onRemove);
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'wme-vbr-del';
+    deleteBtn.textContent = '×';
+    deleteBtn.title = messages.deleteRule;
+    deleteBtn.addEventListener('click', onRemove);
 
     top.appendChild(sw.wrapper);
     top.appendChild(badge);
-    top.appendChild(selRoad);
-    top.appendChild(btnDel);
+    top.appendChild(roadSelect);
+    top.appendChild(deleteBtn);
 
-    // ===== Linha de baixo: operador + km/h + cor =====
+    // Bottom row: operator + speed + color
     const bottom = document.createElement('div');
     bottom.className = 'wme-vbr-row-bottom';
 
-    const selOp = document.createElement('select');
-    selOp.className = 'wme-vbr-op';
-    for (const op of OPERADORES) {
+    const opSelect = document.createElement('select');
+    opSelect.className = 'wme-vbr-op';
+    for (const op of OPERATORS) {
         const opt = document.createElement('option');
         opt.value = op;
         opt.textContent = op;
-        if (op === regra.operador) opt.selected = true;
-        selOp.appendChild(opt);
+        if (op === rule.operator) opt.selected = true;
+        opSelect.appendChild(opt);
     }
-    selOp.addEventListener('change', () => {
-        regra.operador = selOp.value as Operador;
+    opSelect.addEventListener('change', () => {
+        rule.operator = opSelect.value as Operator;
         onChange();
     });
 
-    const inpVel = document.createElement('input');
-    inpVel.type = 'number';
-    inpVel.className = 'wme-vbr-vel';
-    inpVel.min = '0';
-    inpVel.max = '200';
-    inpVel.value = String(regra.velocidade);
-    inpVel.title = 'km/h';
-    inpVel.addEventListener('change', () => {
-        const v = parseInt(inpVel.value, 10);
-        regra.velocidade = isNaN(v) ? 0 : v;
+    const speedInput = document.createElement('input');
+    speedInput.type = 'number';
+    speedInput.className = 'wme-vbr-vel';
+    speedInput.min = '0';
+    speedInput.max = '200';
+    speedInput.value = String(rule.speedKmh);
+    speedInput.title = messages.column.speed;
+    speedInput.addEventListener('change', () => {
+        const v = parseInt(speedInput.value, 10);
+        rule.speedKmh = isNaN(v) ? 0 : v;
         onChange();
     });
 
-    const sufixo = document.createElement('span');
-    sufixo.className = 'wme-vbr-vel-suffix';
-    sufixo.textContent = 'km/h';
+    const speedSuffix = document.createElement('span');
+    speedSuffix.className = 'wme-vbr-vel-suffix';
+    speedSuffix.textContent = messages.speedSuffix;
 
-    const inpCor = document.createElement('input');
-    inpCor.type = 'color';
-    inpCor.className = 'wme-vbr-color';
-    inpCor.value = regra.cor;
-    inpCor.title = 'Cor';
-    inpCor.addEventListener('change', () => {
-        regra.cor = inpCor.value;
-        atualizarVisibilidadeBadge();
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.className = 'wme-vbr-color';
+    colorInput.value = rule.color;
+    colorInput.title = messages.column.color;
+    colorInput.addEventListener('change', () => {
+        rule.color = colorInput.value;
+        updateBadgeVisibility();
         onChange();
     });
 
-    bottom.appendChild(selOp);
-    bottom.appendChild(inpVel);
-    bottom.appendChild(sufixo);
-    bottom.appendChild(inpCor);
+    bottom.appendChild(opSelect);
+    bottom.appendChild(speedInput);
+    bottom.appendChild(speedSuffix);
+    bottom.appendChild(colorInput);
 
-    linha.appendChild(top);
-    linha.appendChild(bottom);
+    row.appendChild(top);
+    row.appendChild(bottom);
 
-    let ultimaContagem = 0;
+    let lastCount = 0;
 
-    function atualizarVisibilidadeBadge(): void {
-        const visivel = regra.enabled && ultimaContagem > 0;
-        badge.classList.toggle('hidden', !visivel);
-        badge.style.background = regra.cor;
+    function updateBadgeVisibility(): void {
+        const visible = rule.enabled && lastCount > 0;
+        badge.classList.toggle('hidden', !visible);
+        badge.style.background = rule.color;
     }
 
     return {
-        el: linha,
-        atualizarContagem: (n: number) => {
-            ultimaContagem = n;
+        el: row,
+        setCount: (n: number) => {
+            lastCount = n;
             badge.textContent = String(n);
-            atualizarVisibilidadeBadge();
+            updateBadgeVisibility();
         },
     };
 }
 
-function renderizarRegras(container: HTMLElement, totalEl: HTMLElement): void {
+function renderRules(container: HTMLElement, totalEl: HTMLElement): void {
     container.innerHTML = '';
 
-    const reagir = () => { salvarConfig(); verificarVelocidades(); };
+    const handlers: { ruleId: string; setCount: (n: number) => void }[] = [];
 
-    const handlersContagem: { ruleId: string; atualizar: (n: number) => void }[] = [];
+    const onRuleChanged = () => {
+        saveConfig();
+        refreshHighlights();
+    };
 
-    for (const regra of config.regras) {
-        const { el, atualizarContagem } = criarLinhaRegra(regra, reagir, () => {
-            config.regras = config.regras.filter((r) => r.id !== regra.id);
-            salvarConfig();
-            renderizarRegras(container, totalEl);
-            verificarVelocidades();
+    for (const rule of config.rules) {
+        const handle = createRuleRow(rule, onRuleChanged, () => {
+            config.rules = config.rules.filter((r) => r.id !== rule.id);
+            saveConfig();
+            renderRules(container, totalEl);
+            refreshHighlights();
         });
-        container.appendChild(el);
-        handlersContagem.push({ ruleId: regra.id, atualizar: atualizarContagem });
+        container.appendChild(handle.el);
+        handlers.push({ ruleId: rule.id, setCount: handle.setCount });
     }
 
-    onContagensAtualizadas = () => {
-        for (const h of handlersContagem) {
-            h.atualizar(contagens[h.ruleId] ?? 0);
-        }
-        const total = modoDebug
-            ? contagemDebug
-            : Object.values(contagens).reduce((a, b) => a + b, 0);
-        totalEl.textContent = modoDebug
-            ? `Debug: ${total} segmento(s) na vista`
-            : `Total: ${total} segmento(s) destacado(s)`;
+    onCountsUpdated = () => {
+        for (const h of handlers) h.setCount(matchCounts[h.ruleId] ?? 0);
+        const total = debugMode
+            ? debugCount
+            : Object.values(matchCounts).reduce((a, b) => a + b, 0);
+        totalEl.textContent = debugMode
+            ? messages.totalDebug(total)
+            : messages.totalHighlighted(total);
     };
-    onContagensAtualizadas();
+    onCountsUpdated();
 }
 
-async function criarMenuInterativo(): Promise<void> {
+function styleButton(btn: HTMLButtonElement): void {
+    btn.classList.add('wme-vbr-button');
+}
+
+async function buildPanel(): Promise<void> {
     if (!sdk) return;
 
-    injetarEstilos();
+    injectStyles();
 
     const { tabLabel, tabPane } = await sdk.Sidebar.registerScriptTab();
-    tabLabel.innerText = '🚦 Validador BR';
-    tabLabel.title = 'Validador de Velocidades BR';
+    tabLabel.innerText = messages.tabLabel;
+    tabLabel.title = messages.tabTitle;
 
-    tabPane.style.padding = '6px';
+    tabPane.style.padding = '3px';
     tabPane.style.boxSizing = 'border-box';
 
-    const titulo = document.createElement('h4');
-    titulo.innerText = 'Validador de Velocidades BR';
-    titulo.style.margin = '0 0 8px 0';
-    tabPane.appendChild(titulo);
+    const title = document.createElement('h4');
+    title.innerText = messages.panelTitle;
+    title.style.margin = '0 0 8px 0';
+    tabPane.appendChild(title);
 
-    const descricao = document.createElement('p');
-    descricao.style.fontSize = '11px';
-    descricao.style.color = '#555';
-    descricao.style.margin = '0 0 10px 0';
-    descricao.innerHTML =
-        'Configure regras por tipo de via, operador, velocidade (km/h) e cor. ' +
-        'Um segmento é destacado se <i>qualquer</i> regra ativa casar com a velocidade fwd ou rev.';
-    tabPane.appendChild(descricao);
+    const description = document.createElement('p');
+    description.style.fontSize = '11px';
+    description.style.color = '#555';
+    description.style.margin = '0 0 10px 0';
+    description.innerHTML = messages.panelDescription;
+    tabPane.appendChild(description);
 
-    const labelDebug = document.createElement('div');
-    Object.assign(labelDebug.style, {
+    // Debug switch
+    const debugRow = document.createElement('div');
+    Object.assign(debugRow.style, {
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
         margin: '0 0 10px 0',
     } as CSSStyleDeclaration);
 
-    const swDebug = criarSwitch(false, (v) => {
-        modoDebug = v;
-        verificarVelocidades();
+    const debugSw = createSwitch(false, (v) => {
+        debugMode = v;
+        refreshHighlights();
     });
-    const txtDebug = document.createElement('span');
-    txtDebug.style.fontSize = '12px';
-    txtDebug.textContent = 'Debug (pintar tudo de azul)';
+    const debugLabel = document.createElement('span');
+    debugLabel.style.fontSize = '12px';
+    debugLabel.textContent = messages.debugToggle;
 
-    labelDebug.appendChild(swDebug.wrapper);
-    labelDebug.appendChild(txtDebug);
-    tabPane.appendChild(labelDebug);
+    debugRow.appendChild(debugSw.wrapper);
+    debugRow.appendChild(debugLabel);
+    tabPane.appendChild(debugRow);
 
-    const containerRegras = document.createElement('div');
-    containerRegras.style.margin = '0 0 8px 0';
-    tabPane.appendChild(containerRegras);
+    // Rules container
+    const rulesContainer = document.createElement('div');
+    rulesContainer.style.margin = '0 0 8px 0';
+    tabPane.appendChild(rulesContainer);
 
+    // Total display
     const totalEl = document.createElement('div');
     Object.assign(totalEl.style, {
         fontSize: '11px',
@@ -486,53 +425,82 @@ async function criarMenuInterativo(): Promise<void> {
         background: '#f0f0f0',
         borderRadius: '4px',
     } as CSSStyleDeclaration);
-    totalEl.textContent = 'Total: 0 segmento(s) destacado(s)';
+    totalEl.textContent = messages.totalHighlighted(0);
     tabPane.appendChild(totalEl);
 
-    renderizarRegras(containerRegras, totalEl);
+    renderRules(rulesContainer, totalEl);
 
-    const botoes = document.createElement('div');
-    botoes.style.display = 'flex';
-    botoes.style.gap = '6px';
+    // Action buttons
+    const buttons = document.createElement('div');
+    buttons.style.display = 'flex';
+    buttons.style.gap = '6px';
 
-    const btnAdd = document.createElement('button');
-    btnAdd.type = 'button';
-    btnAdd.textContent = '+ Adicionar regra';
-    estilizarBotao(btnAdd);
-    btnAdd.addEventListener('click', () => {
-        config.regras.push({
-            id: novoId(),
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = messages.addRule;
+    styleButton(addBtn);
+    addBtn.addEventListener('click', () => {
+        const firstId = countryProfile.roadTypes[0]?.id ?? 1;
+        const suggestedSpeed =
+            countryProfile.roadTypes.find((r) => r.id === firstId)?.defaultSpeedKmh ?? 30;
+        config.rules.push({
+            id: newId(),
             enabled: true,
-            roadType: 1,
-            operador: '>',
-            velocidade: 30,
-            cor: '#00AAFF',
+            roadType: firstId,
+            operator: '>',
+            speedKmh: suggestedSpeed,
+            color: '#00AAFF',
         });
-        salvarConfig();
-        renderizarRegras(containerRegras, totalEl);
-        verificarVelocidades();
+        saveConfig();
+        renderRules(rulesContainer, totalEl);
+        refreshHighlights();
     });
 
-    const btnReset = document.createElement('button');
-    btnReset.type = 'button';
-    btnReset.textContent = 'Restaurar padrões';
-    estilizarBotao(btnReset);
-    btnReset.addEventListener('click', () => {
-        if (!confirm('Restaurar configuração padrão?')) return;
-        config = clonar(DEFAULT_CONFIG);
-        salvarConfig();
-        renderizarRegras(containerRegras, totalEl);
-        verificarVelocidades();
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.textContent = messages.resetRules;
+    styleButton(resetBtn);
+    resetBtn.addEventListener('click', () => {
+        if (!confirm(messages.confirmReset)) return;
+        config = defaultConfig(countryProfile);
+        saveConfig();
+        renderRules(rulesContainer, totalEl);
+        refreshHighlights();
     });
 
-    botoes.appendChild(btnAdd);
-    botoes.appendChild(btnReset);
-    tabPane.appendChild(botoes);
+    buttons.appendChild(addBtn);
+    buttons.appendChild(resetBtn);
+    tabPane.appendChild(buttons);
 }
 
-function initScript(): void {
+// ===========================================================================
+// Bootstrap
+// ===========================================================================
+
+function detectContext(activeSdk: WmeSDK): { profile: CountryProfile; messages: Messages } {
+    let countryAbbr: string | null = null;
+    try {
+        countryAbbr = activeSdk.DataModel.Countries.getTopCountry()?.abbr ?? null;
+    } catch {
+        // ignored
+    }
+
+    let localeCode: string | null = null;
+    try {
+        localeCode = activeSdk.Settings.getLocale()?.localeCode ?? null;
+    } catch {
+        // ignored
+    }
+
+    return {
+        profile: getCountryProfile(countryAbbr),
+        messages: getMessages(pickLocale(localeCode)),
+    };
+}
+
+function startScript(): void {
     if (!sdk) return;
-    console.log(`[${SCRIPT_NAME}] SDK pronto, ativando script.`);
+    console.log(`[${SCRIPT_NAME}] ${messages.scriptReady}`);
 
     sdk.Map.addLayer({
         layerName: LAYER_NAME,
@@ -552,22 +520,22 @@ function initScript(): void {
         ],
     });
 
-    criarMenuInterativo().catch((e) =>
-        console.error(`[${SCRIPT_NAME}] erro ao registrar aba:`, e),
+    buildPanel().catch((e) =>
+        console.error(`[${SCRIPT_NAME}] ${messages.tabRegisterError}`, e),
     );
 
-    sdk.Events.on({ eventName: 'wme-map-move-end', eventHandler: verificarVelocidades });
-    sdk.Events.on({ eventName: 'wme-map-zoom-changed', eventHandler: verificarVelocidades });
-    sdk.Events.on({ eventName: 'wme-map-data-loaded', eventHandler: verificarVelocidades });
-    sdk.Events.on({ eventName: 'wme-data-model-objects-changed', eventHandler: verificarVelocidades });
+    sdk.Events.on({ eventName: 'wme-map-move-end', eventHandler: refreshHighlights });
+    sdk.Events.on({ eventName: 'wme-map-zoom-changed', eventHandler: refreshHighlights });
+    sdk.Events.on({ eventName: 'wme-map-data-loaded', eventHandler: refreshHighlights });
+    sdk.Events.on({ eventName: 'wme-data-model-objects-changed', eventHandler: refreshHighlights });
 
-    verificarVelocidades();
+    refreshHighlights();
 }
 
-function aguardarSdkInjetado(timeoutMs = 60000): Promise<void> {
+function waitForSdkInjection(timeoutMs = 60000): Promise<void> {
     return new Promise((resolve, reject) => {
-        const inicio = Date.now();
-        const checar = () => {
+        const start = Date.now();
+        const check = () => {
             const w = window as unknown as {
                 SDK_INITIALIZED?: Promise<unknown>;
                 getWmeSdk?: unknown;
@@ -576,29 +544,43 @@ function aguardarSdkInjetado(timeoutMs = 60000): Promise<void> {
                 resolve();
                 return;
             }
-            if (Date.now() - inicio > timeoutMs) {
-                reject(new Error('Timeout aguardando window.SDK_INITIALIZED'));
+            if (Date.now() - start > timeoutMs) {
+                reject(new Error('Timeout waiting for window.SDK_INITIALIZED'));
                 return;
             }
-            setTimeout(checar, 200);
+            setTimeout(check, 200);
         };
-        checar();
+        check();
     });
 }
 
 async function bootstrap(): Promise<void> {
-    await aguardarSdkInjetado();
+    await waitForSdkInjection();
     await window.SDK_INITIALIZED;
     const wmeSdk = window.getWmeSdk!({ scriptId: SCRIPT_ID, scriptName: SCRIPT_NAME });
     sdk = wmeSdk;
     await wmeSdk.Events.once({ eventName: 'wme-ready' });
-    initScript();
+
+    const ctx = detectContext(wmeSdk);
+    countryProfile = ctx.profile;
+    messages = ctx.messages;
+
+    // If user has no rules saved yet, seed with country-aware defaults.
+    if (config.rules.length === 0) {
+        config = defaultConfig(countryProfile);
+        saveConfig();
+    }
+
+    startScript();
 }
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        bootstrap().catch((e) => console.error(`[${SCRIPT_NAME}] erro:`, e));
+        bootstrap().catch((e) => console.error(`[${SCRIPT_NAME}] error:`, e));
     });
 } else {
-    bootstrap().catch((e) => console.error(`[${SCRIPT_NAME}] erro:`, e));
+    bootstrap().catch((e) => console.error(`[${SCRIPT_NAME}] error:`, e));
 }
+
+// Avoid "unused import" complaints if RoadTypeEntry becomes only structurally used.
+export type { RoadTypeEntry };

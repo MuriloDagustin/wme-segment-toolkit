@@ -1,0 +1,160 @@
+.wme-vbr-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    margin-bottom: 6px;
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+}
+
+.wme-vbr-row-top,
+.wme-vbr-row-bottom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wme-vbr-row-top > .wme-vbr-roadtype {
+    flex: 1;
+    min-width: 0;
+}
+
+.wme-vbr-row-bottom {
+    padding-left: 4px;
+}
+
+.wme-vbr-row-bottom > .wme-vbr-vel {
+    flex: 1;
+    min-width: 60px;
+}
+
+.wme-vbr-switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.wme-vbr-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.wme-vbr-switch .slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #ccc;
+    border-radius: 20px;
+    transition: background 0.2s;
+}
+
+.wme-vbr-switch .slider::before {
+    content: "";
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.wme-vbr-switch input:checked + .slider {
+    background: #34c759;
+}
+
+.wme-vbr-switch input:checked + .slider::before {
+    transform: translateX(16px);
+}
+
+.wme-vbr-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0 8px;
+    border-radius: 10px;
+    color: #fff;
+    background: #999;
+    flex-shrink: 0;
+}
+
+.wme-vbr-badge.hidden {
+    display: none;
+}
+
+.wme-vbr-row select,
+.wme-vbr-row input[type="number"] {
+    font-size: 12px;
+    padding: 3px 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+    box-sizing: border-box;
+}
+
+.wme-vbr-row select.wme-vbr-roadtype {
+    width: 100%;
+}
+
+.wme-vbr-row input[type="number"].wme-vbr-vel {
+    width: 100%;
+}
+
+.wme-vbr-row select.wme-vbr-op {
+    width: 56px;
+}
+
+.wme-vbr-color {
+    width: 36px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    flex-shrink: 0;
+}
+
+.wme-vbr-del {
+    background: transparent;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 26px;
+    height: 26px;
+    line-height: 18px;
+    padding: 0;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.wme-vbr-del:hover {
+    background: #fee;
+    border-color: #f99;
+}
+
+.wme-vbr-vel-suffix {
+    font-size: 11px;
+    color: #666;
+    flex-shrink: 0;
+}
+
+.wme-vbr-button {
+    font-size: 11px;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f5f5f5;
+    cursor: pointer;
+}
