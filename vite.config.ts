@@ -12,9 +12,9 @@ export default defineConfig({
                 exclude: ['https://www.waze.com/user/editor*'],
                 grant: 'none',
                 'run-at': 'document-end',
-                description: 'Destaca limites de velocidade fora do padrão. Atualizado para o novo WME SDK.',
-                author: 'Você',
-                version: '0.4',
+                description: 'Destaca limites de velocidade fora do padrão. Feito para o WME SDK.',
+                author: 'Murilo D\'agustin',
+                version: '1.0.0',
             },
             build: {
                 // Generates a single .user.js with everything bundled & minified by Vite.

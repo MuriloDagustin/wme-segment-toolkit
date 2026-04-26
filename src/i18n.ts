@@ -44,6 +44,14 @@ export interface Messages {
     scriptReady: string;
     tabRegisterError: string;
     saveError: string;
+    selectStreet: {
+        button: string;
+        buttonByName: string;
+        tooltip: string;
+        tooltipByName: string;
+        nothingSelected: string;
+        expanded: (count: number) => string;
+    };
 }
 
 const EN: Messages = {
@@ -87,6 +95,15 @@ const EN: Messages = {
     scriptReady: 'SDK ready, activating script.',
     tabRegisterError: 'Failed to register sidebar tab:',
     saveError: 'Failed to save config:',
+    selectStreet: {
+        button: 'Select whole street',
+        buttonByName: 'Select by name (crosses roundabouts)',
+        tooltip: 'Expand selection to all connected segments sharing the same primary street. Some roundabouts are crossed automatically, but it is not always possible.',
+        tooltipByName:
+            'Expand selection to all connected segments whose primary or alternate street name matches the seed. Crosses roundabouts but may pick up unrelated streets that share the name.',
+        nothingSelected: 'Select a segment first.',
+        expanded: (n) => `Selected ${n} segment(s) of the same street.`,
+    },
 };
 
 const PT: Messages = {
@@ -130,6 +147,15 @@ const PT: Messages = {
     scriptReady: 'SDK pronto, ativando script.',
     tabRegisterError: 'Falha ao registrar aba do sidebar:',
     saveError: 'Falha ao salvar configuração:',
+    selectStreet: {
+        button: 'Selecionar rua inteira',
+        buttonByName: 'Selecionar por nome (atravessa rotatórias)',
+        tooltip: 'Expandir seleção para todos os segmentos conectados que pertencem à mesma rua principal. Algumas rotatórias são atravessadas automaticamente, mas nem sempre é possível.',
+        tooltipByName:
+            'Expandir seleção para todos os segmentos conectados cujo nome principal ou alternativo casa com o da selecionada. Atravessa rotatórias, mas pode pegar ruas distintas com o mesmo nome.',
+        nothingSelected: 'Selecione um segmento antes.',
+        expanded: (n) => `Selecionados ${n} segmento(s) da mesma rua.`,
+    },
 };
 
 const CATALOG: Record<LocaleId, Messages> = { en: EN, pt: PT };
