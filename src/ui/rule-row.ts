@@ -27,9 +27,11 @@ function createRoadTypeSelect(
     profile: CountryProfile,
     selected: RoadTypeId,
     onChange: (id: RoadTypeId) => void,
+    title: string,
 ): HTMLSelectElement {
     const select = document.createElement('select');
     select.className = 'wme-vbr-roadtype';
+    select.title = title;
     for (const entry of profile.roadTypes) {
         const opt = document.createElement('option');
         opt.value = String(entry.id);
@@ -78,7 +80,7 @@ export function createRuleRow(deps: RuleRowDeps): RuleRowHandle {
     const roadSelect = createRoadTypeSelect(profile, rule.roadType, (id) => {
         rule.roadType = id;
         onChange();
-    });
+    }, messages.speedHelp.roadType);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -100,6 +102,7 @@ export function createRuleRow(deps: RuleRowDeps): RuleRowHandle {
 
     const opSelect = document.createElement('select');
     opSelect.className = 'wme-vbr-op';
+    opSelect.title = messages.speedHelp.operator;
     for (const op of OPERATORS) {
         const opt = document.createElement('option');
         opt.value = op;
@@ -119,7 +122,7 @@ export function createRuleRow(deps: RuleRowDeps): RuleRowHandle {
     speedInput.min = '0';
     speedInput.max = '200';
     speedInput.value = String(rule.speedKmh);
-    speedInput.title = messages.column.speed;
+    speedInput.title = messages.speedHelp.speed;
     speedInput.addEventListener('change', () => {
         const v = parseInt(speedInput.value, 10);
         rule.speedKmh = isNaN(v) ? 0 : v;
@@ -134,7 +137,7 @@ export function createRuleRow(deps: RuleRowDeps): RuleRowHandle {
     colorInput.type = 'color';
     colorInput.className = 'wme-vbr-color';
     colorInput.value = rule.color;
-    colorInput.title = messages.column.color;
+    colorInput.title = messages.speedHelp.color;
     colorInput.addEventListener('change', () => {
         rule.color = colorInput.value;
         updateBadgeVisibility();
@@ -158,7 +161,7 @@ export function createRuleRow(deps: RuleRowDeps): RuleRowHandle {
 
     const verifiedSelect = document.createElement('select');
     verifiedSelect.className = 'wme-vbr-verified';
-    verifiedSelect.title = messages.verifiedFilter.title;
+    verifiedSelect.title = messages.speedHelp.verifiedFilter;
     for (const f of VERIFIED_FILTERS) {
         const opt = document.createElement('option');
         opt.value = f;

@@ -10,7 +10,7 @@ export function buildSelectionTab(app: App, container: HTMLElement): void {
     intro.style.fontSize = '11px';
     intro.style.color = '#555';
     intro.style.margin = '0 0 10px 0';
-    intro.textContent = app.messages.selectStreet.tooltip;
+    intro.textContent = app.messages.selectStreet.intro;
     container.appendChild(intro);
 
     const wrapper = document.createElement('div');

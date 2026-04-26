@@ -4,6 +4,22 @@ import type { CountryProfile } from './countries';
 export type Operator = '==' | '!=' | '>' | '>=' | '<' | '<=' | 'unset';
 export type VerifiedFilter = 'any' | 'verified' | 'unverified';
 
+export type NameMatchMode = 'prefix' | 'contains' | 'exact';
+export type RoadTypeFilterOp = 'in' | 'not-in';
+export type NameSource = 'primary' | 'alternate' | 'any';
+
+export interface NameRule {
+    id: string;
+    enabled: boolean;
+    pattern: string;
+    matchMode: NameMatchMode;
+    nameSource: NameSource;
+    /** When `roadTypes` is empty, road type filter is ignored. */
+    roadTypeFilter: RoadTypeFilterOp;
+    roadTypes: number[];
+    color: string;
+}
+
 export interface Rule {
     id: string;
     enabled: boolean;
@@ -17,12 +33,17 @@ export interface Rule {
 
 export interface Config {
     rules: Rule[];
+    /** Name-pattern + road-type rules (separate highlight layer). */
+    nameRules?: NameRule[];
     /** User-selected country code; 'auto' or undefined means auto-detect. */
     selectedCountry?: string;
 }
 
 export const OPERATORS: Operator[] = ['==', '!=', '>', '>=', '<', '<=', 'unset'];
 export const VERIFIED_FILTERS: VerifiedFilter[] = ['any', 'verified', 'unverified'];
+export const NAME_MATCH_MODES: NameMatchMode[] = ['prefix', 'contains', 'exact'];
+export const ROAD_TYPE_FILTER_OPS: RoadTypeFilterOp[] = ['in', 'not-in'];
+export const NAME_SOURCES: NameSource[] = ['primary', 'alternate', 'any'];
 
 export const STORAGE_KEY = 'wme-speed-limit-validator:config:v2';
 

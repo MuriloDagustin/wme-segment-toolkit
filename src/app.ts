@@ -12,6 +12,10 @@ import {
     setupHighlightLayer,
     type RefreshResult,
 } from './highlights';
+import {
+    refreshNameHighlights,
+    setupNameHighlightLayer,
+} from './name-highlights';
 import { detectContext } from './sdk-bootstrap';
 import { buildPanel } from './ui/panel';
 import { injectStyles } from './ui/styles';
@@ -38,8 +42,15 @@ export class App {
     matchCounts: Record<string, number> = {};
     debugCount = 0;
 
+    /** Per-rule match counts for name rules (last refresh). */
+    nameMatchCounts: Record<string, number> = {};
+    nameTotal = 0;
+
     /** Set by the panel so refreshHighlights can notify the UI. */
     onCountsUpdated: (() => void) | null = null;
+
+    /** Set by the names tab so refreshNameHighlights can notify the UI. */
+    onNameCountsUpdated: (() => void) | null = null;
 
     constructor(sdk: WmeSDK) {
         this.sdk = sdk;
@@ -79,6 +90,12 @@ export class App {
         this.matchCounts = result.matchCounts;
         this.debugCount = result.debugCount;
         this.onCountsUpdated?.();
+
+        const nameResult = refreshNameHighlights(this.sdk, this.config);
+        this.nameMatchCounts = nameResult.matchCounts;
+        this.nameTotal = nameResult.totalFeatures;
+        this.onNameCountsUpdated?.();
+
         return result;
     }
 
@@ -87,6 +104,7 @@ export class App {
         console.log(`[${SCRIPT_NAME}] ${this.messages.scriptReady}`);
 
         setupHighlightLayer(this.sdk);
+        setupNameHighlightLayer(this.sdk);
 
         injectStyles();
         buildPanel(this).catch((e) =>

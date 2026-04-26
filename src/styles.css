@@ -185,13 +185,14 @@
 .wme-vbr-tabs {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .wme-vbr-tab-header {
     display: flex;
     gap: 4px;
     border-bottom: 1px solid #d0d0d0;
+    margin-bottom: 2px;
 }
 
 .wme-vbr-tab-btn {
@@ -217,5 +218,44 @@
 }
 
 .wme-vbr-tab-pane {
-    padding-top: 4px;
+    padding: 6px 2px 4px 2px;
+}
+
+.wme-vbr-name-pattern {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    padding: 3px 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.wme-vbr-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding-left: 4px;
+}
+
+.wme-vbr-chip {
+    font-size: 10px;
+    padding: 2px 6px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    background: #fff;
+    color: #666;
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.wme-vbr-chip:hover {
+    background: #f0f0f0;
+}
+
+.wme-vbr-chip-active {
+    background: #1976d2;
+    border-color: #1976d2;
+    color: #fff;
 }

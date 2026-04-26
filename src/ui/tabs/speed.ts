@@ -54,8 +54,10 @@ function createTotalElement(app: App): HTMLElement {
         borderRadius: '4px',
     } as CSSStyleDeclaration);
     el.textContent = app.messages.totalHighlighted(0);
+    el.title = app.messages.speedHelp.total;
     return el;
 }
+
 
 function appendCountrySelector(
     parent: HTMLElement,
@@ -83,6 +85,7 @@ function appendCountrySelector(
         border: '1px solid #ccc',
         borderRadius: '4px',
     } as CSSStyleDeclaration);
+    select.title = app.messages.speedHelp.country;
 
     const autoOpt = document.createElement('option');
     autoOpt.value = 'auto';
@@ -119,11 +122,12 @@ function appendDebugSwitch(parent: HTMLElement, app: App): void {
     const sw = createSwitch(false, (v) => {
         app.debugMode = v;
         app.refresh();
-    });
+    }, app.messages.speedHelp.debug);
 
     const label = document.createElement('span');
     label.style.fontSize = '12px';
     label.textContent = app.messages.debugToggle;
+    label.title = app.messages.speedHelp.debug;
 
     row.appendChild(sw.wrapper);
     row.appendChild(label);
@@ -143,6 +147,7 @@ function appendActionButtons(
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.textContent = app.messages.addRule;
+    addBtn.title = app.messages.speedHelp.addRule;
     addBtn.classList.add('wme-vbr-button');
     addBtn.addEventListener('click', () => {
         const firstId = app.countryProfile.roadTypes[0]?.id ?? 1;
@@ -165,6 +170,7 @@ function appendActionButtons(
     const resetBtn = document.createElement('button');
     resetBtn.type = 'button';
     resetBtn.textContent = app.messages.resetRules;
+    resetBtn.title = app.messages.speedHelp.resetRules;
     resetBtn.classList.add('wme-vbr-button');
     resetBtn.addEventListener('click', () => {
         if (!confirm(app.messages.confirmReset)) return;

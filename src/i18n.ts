@@ -51,10 +51,44 @@ export interface Messages {
         tooltipByName: string;
         nothingSelected: string;
         expanded: (count: number) => string;
+        intro: string;
+    };
+    speedHelp: {
+        country: string;
+        debug: string;
+        addRule: string;
+        resetRules: string;
+        roadType: string;
+        operator: string;
+        speed: string;
+        color: string;
+        verifiedFilter: string;
+        total: string;
     };
     tabs: {
         speed: string;
         selection: string;
+        names: string;
+    };
+    nameRule: {
+        description: string;
+        addRule: string;
+        resetRules: string;
+        confirmReset: string;
+        total: (n: number) => string;
+        pattern: string;
+        patternPlaceholder: string;
+        matchMode: { title: string; prefix: string; contains: string; exact: string };
+        nameSource: { title: string; primary: string; alternate: string; any: string };
+        roadTypeFilter: { title: string; in: string; notIn: string; pickerHint: string };
+        help: {
+            pattern: string;
+            matchMode: string;
+            nameSource: string;
+            roadTypeFilter: string;
+            chips: string;
+            color: string;
+        };
     };
 }
 
@@ -107,10 +141,61 @@ const EN: Messages = {
             'Expand selection to all connected segments whose primary or alternate street name matches the seed. Crosses roundabouts but may pick up unrelated streets that share the name.',
         nothingSelected: 'Select a segment first.',
         expanded: (n) => `Selected ${n} segment(s) of the same street.`,
+        intro:
+            'Select one segment of a street and click a button below to expand the selection to the rest of the street.',
+    },
+    speedHelp: {
+        country: 'Country profile (road types and default speeds). "Auto" uses the country detected on the visible map.',
+        debug: 'Paint every visible segment cyan, ignoring rules.',
+        addRule: 'Add a new highlight rule.',
+        resetRules: 'Replace all rules with country defaults.',
+        roadType: 'Road type the rule applies to.',
+        operator: 'How to compare segment speed with the rule speed.',
+        speed: 'Speed in km/h to compare against.',
+        color: 'Highlight color on the map.',
+        verifiedFilter: 'Filter by verification status of the speed limit.',
+        total: 'Total segments highlighted by all enabled rules.',
     },
     tabs: {
         speed: 'Speed',
         selection: 'Selection',
+        names: 'Names',
+    },
+    nameRule: {
+        description:
+            'Highlight segments whose street name matches a pattern, optionally restricted by road type. Useful to find misclassified avenues, roads, etc.',
+        addRule: '+ Add rule',
+        resetRules: 'Clear all',
+        confirmReset: 'Remove all name rules?',
+        total: (n) => `Total: ${n} segment(s) highlighted by name rules`,
+        pattern: 'Pattern',
+        patternPlaceholder: 'e.g. Av.',
+        matchMode: {
+            title: 'Match mode',
+            prefix: 'starts with',
+            contains: 'contains',
+            exact: 'equals',
+        },
+        nameSource: {
+            title: 'Name source',
+            primary: 'Primary',
+            alternate: 'Alternate',
+            any: 'Any',
+        },
+        roadTypeFilter: {
+            title: 'Road types',
+            in: 'is one of',
+            notIn: 'is NOT one of',
+            pickerHint: 'Click to add/remove. Empty = ignore road type.',
+        },
+        help: {
+            pattern: 'Text to search in the segment name. Case-insensitive. Empty = rule off.',
+            matchMode: 'How the pattern matches the name (starts with / contains / equals).',
+            nameSource: 'Which name to check: primary, alternate, or any.',
+            roadTypeFilter: 'Whether the chips below INCLUDE or EXCLUDE road types.',
+            chips: 'Click chips to toggle road types. Empty = ignore road type.',
+            color: 'Highlight color on the map.',
+        },
     },
 };
 
@@ -163,10 +248,61 @@ const PT: Messages = {
             'Expandir seleção para todos os segmentos conectados cujo nome principal ou alternativo casa com o da selecionada. Atravessa rotatórias, mas pode pegar ruas distintas com o mesmo nome.',
         nothingSelected: 'Selecione um segmento antes.',
         expanded: (n) => `Selecionados ${n} segmento(s) da mesma rua.`,
+        intro:
+            'Selecione um segmento de uma rua e clique em um botão abaixo para expandir a seleção para o resto da rua.',
+    },
+    speedHelp: {
+        country: 'Perfil do país (tipos de via e velocidades padrão). "Auto" usa o país detectado no mapa.',
+        debug: 'Pinta todo segmento visível de ciano, ignorando regras.',
+        addRule: 'Adicionar uma nova regra de destaque.',
+        resetRules: 'Substituir todas as regras pelos padrões do país.',
+        roadType: 'Tipo de via ao qual a regra se aplica.',
+        operator: 'Como comparar a velocidade do segmento com a da regra.',
+        speed: 'Velocidade em km/h para comparar.',
+        color: 'Cor de destaque no mapa.',
+        verifiedFilter: 'Filtrar pelo status de verificação do limite.',
+        total: 'Total de segmentos destacados por todas as regras ativas.',
     },
     tabs: {
         speed: 'Velocidades',
         selection: 'Seleção',
+        names: 'Nomes',
+    },
+    nameRule: {
+        description:
+            'Destaque segmentos cujo nome casa com um padrão, opcionalmente limitado por tipo de via. Útil para achar avenidas, rodovias etc. mal classificadas.',
+        addRule: '+ Adicionar regra',
+        resetRules: 'Limpar todas',
+        confirmReset: 'Remover todas as regras de nome?',
+        total: (n) => `Total: ${n} segmento(s) destacado(s) por regras de nome`,
+        pattern: 'Padrão',
+        patternPlaceholder: 'ex.: Av.',
+        matchMode: {
+            title: 'Modo de match',
+            prefix: 'começa com',
+            contains: 'contém',
+            exact: 'igual a',
+        },
+        nameSource: {
+            title: 'Fonte do nome',
+            primary: 'Principal',
+            alternate: 'Alternativo',
+            any: 'Qualquer',
+        },
+        roadTypeFilter: {
+            title: 'Tipos de via',
+            in: 'é um destes',
+            notIn: 'NÃO é um destes',
+            pickerHint: 'Clique para adicionar/remover. Vazio = ignora tipo de via.',
+        },
+        help: {
+            pattern: 'Texto a buscar no nome do segmento. Sem distinção de maiúsculas. Vazio = regra desativada.',
+            matchMode: 'Como o padrão casa com o nome (começa com / contém / igual a).',
+            nameSource: 'Qual nome checar: principal, alternativo ou qualquer.',
+            roadTypeFilter: 'Se os chips abaixo INCLUEM ou EXCLUEM tipos de via.',
+            chips: 'Clique nos chips para alternar tipos de via. Vazio = ignora tipo.',
+            color: 'Cor de destaque no mapa.',
+        },
     },
 };
 

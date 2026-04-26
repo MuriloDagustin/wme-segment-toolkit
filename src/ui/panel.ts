@@ -2,6 +2,7 @@ import type { App } from '../app';
 import { createTabs } from './tabs';
 import { buildSpeedTab } from './tabs/speed';
 import { buildSelectionTab } from './tabs/selection';
+import { buildNamesTab } from './tabs/names';
 
 /** Build the script's side-panel inside the SDK-provided tab. */
 export async function buildPanel(app: App): Promise<void> {
@@ -9,7 +10,7 @@ export async function buildPanel(app: App): Promise<void> {
     tabLabel.innerText = app.messages.tabLabel;
     tabLabel.title = app.messages.tabTitle;
 
-    tabPane.style.padding = '3px';
+    tabPane.style.padding = '10px 12px 14px 12px';
     tabPane.style.boxSizing = 'border-box';
 
     appendTitle(tabPane, app.messages.panelTitle);
@@ -19,6 +20,11 @@ export async function buildPanel(app: App): Promise<void> {
             id: 'speed',
             label: app.messages.tabs.speed,
             build: (container) => buildSpeedTab(app, container),
+        },
+        {
+            id: 'names',
+            label: app.messages.tabs.names,
+            build: (container) => buildNamesTab(app, container),
         },
         {
             id: 'selection',
