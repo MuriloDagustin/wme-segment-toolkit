@@ -453,23 +453,24 @@ async function criarMenuInterativo(): Promise<void> {
         'Um segmento é destacado se <i>qualquer</i> regra ativa casar com a velocidade fwd ou rev.';
     tabPane.appendChild(descricao);
 
-    const labelDebug = document.createElement('label');
+    const labelDebug = document.createElement('div');
     Object.assign(labelDebug.style, {
-        cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
+        gap: '8px',
         margin: '0 0 10px 0',
     } as CSSStyleDeclaration);
 
-    const chkDebug = document.createElement('input');
-    chkDebug.type = 'checkbox';
-    chkDebug.style.marginRight = '8px';
-    chkDebug.addEventListener('change', () => {
-        modoDebug = chkDebug.checked;
+    const swDebug = criarSwitch(false, (v) => {
+        modoDebug = v;
         verificarVelocidades();
     });
-    labelDebug.appendChild(chkDebug);
-    labelDebug.appendChild(document.createTextNode('Debug (pintar tudo de azul)'));
+    const txtDebug = document.createElement('span');
+    txtDebug.style.fontSize = '12px';
+    txtDebug.textContent = 'Debug (pintar tudo de azul)';
+
+    labelDebug.appendChild(swDebug.wrapper);
+    labelDebug.appendChild(txtDebug);
     tabPane.appendChild(labelDebug);
 
     const containerRegras = document.createElement('div');
