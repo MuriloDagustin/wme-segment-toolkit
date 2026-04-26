@@ -16,7 +16,7 @@ import { detectContext } from './sdk-bootstrap';
 import { buildPanel } from './ui/panel';
 import { injectStyles } from './ui/styles';
 
-const SCRIPT_NAME = 'WME Speed Limit Validator';
+const SCRIPT_NAME = 'WME Segment Toolkit';
 
 /**
  * Encapsulates all mutable application state plus the lifecycle

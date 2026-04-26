@@ -6,19 +6,19 @@ export default defineConfig({
         monkey({
             entry: 'src/main.ts',
             userscript: {
-                name: 'WME Validador de Velocidades (BR)',
+                name: 'WME Segment Toolkit',
                 namespace: 'http://tampermonkey.net/',
                 match: ['https://www.waze.com/*/editor*', 'https://beta.waze.com/*/editor*'],
                 exclude: ['https://www.waze.com/user/editor*'],
                 grant: 'none',
                 'run-at': 'document-end',
-                description: 'Destaca limites de velocidade fora do padrão. Feito para o WME SDK.',
+                description: 'Toolkit for WME segment editing: speed-limit validator, select whole street and more.',
                 author: 'Murilo D\'agustin',
                 version: '1.0.0',
             },
             build: {
                 // Generates a single .user.js with everything bundled & minified by Vite.
-                fileName: 'velocity-diff.user.js',
+                fileName: 'wme-segment-toolkit.user.js',
             },
         }),
     ],

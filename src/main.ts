@@ -1,8 +1,8 @@
 import { App } from './app';
 import { waitForSdkInjection } from './sdk-bootstrap';
 
-const SCRIPT_ID = 'wme-validador-vel-br';
-const SCRIPT_NAME = 'WME Speed Limit Validator';
+const SCRIPT_ID = 'wme-segment-toolkit';
+const SCRIPT_NAME = 'WME Segment Toolkit';
 
 async function bootstrap(): Promise<void> {
     await waitForSdkInjection();

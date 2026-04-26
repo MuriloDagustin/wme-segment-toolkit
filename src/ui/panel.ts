@@ -179,7 +179,7 @@ function buildSelectStreetButton(app: App, mode: MatchMode): HTMLButtonElement {
             return;
         }
         console.log(
-            `[WME Speed Limit Validator] ${app.messages.selectStreet.expanded(result.count)} (mode=${mode})`,
+            `[WME Segment Toolkit] ${app.messages.selectStreet.expanded(result.count)} (mode=${mode})`,
         );
     });
     return btn;
