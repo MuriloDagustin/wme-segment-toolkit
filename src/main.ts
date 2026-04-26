@@ -147,25 +147,158 @@ function estilizarBotao(btn: HTMLButtonElement): void {
     } as CSSStyleDeclaration);
 }
 
+function injetarEstilos(): void {
+    const ID = 'wme-validador-styles';
+    if (document.getElementById(ID)) return;
+
+    const style = document.createElement('style');
+    style.id = ID;
+    style.textContent = `
+.wme-vbr-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    margin-bottom: 6px;
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+}
+.wme-vbr-row-top, .wme-vbr-row-bottom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.wme-vbr-row-top > .wme-vbr-roadtype { flex: 1; min-width: 0; }
+.wme-vbr-row-bottom { padding-left: 4px; }
+.wme-vbr-row-bottom > .wme-vbr-op { flex: 0 0 auto; }
+.wme-vbr-row-bottom > .wme-vbr-vel { flex: 1; min-width: 60px; }
+
+/* iOS-style switch */
+.wme-vbr-switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+}
+.wme-vbr-switch input { opacity: 0; width: 0; height: 0; }
+.wme-vbr-switch .slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #ccc;
+    border-radius: 20px;
+    transition: background .2s;
+}
+.wme-vbr-switch .slider::before {
+    content: "";
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background: white;
+    border-radius: 50%;
+    transition: transform .2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,.3);
+}
+.wme-vbr-switch input:checked + .slider { background: #34c759; }
+.wme-vbr-switch input:checked + .slider::before { transform: translateX(16px); }
+
+.wme-vbr-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0 8px;
+    border-radius: 10px;
+    color: #fff;
+    background: #999;
+    flex-shrink: 0;
+}
+.wme-vbr-badge.hidden { display: none; }
+
+.wme-vbr-row select,
+.wme-vbr-row input[type="number"] {
+    font-size: 12px;
+    padding: 3px 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+    box-sizing: border-box;
+}
+.wme-vbr-row select.wme-vbr-roadtype { width: 100%; }
+.wme-vbr-row input[type="number"].wme-vbr-vel { width: 100%; }
+.wme-vbr-row select.wme-vbr-op { width: 56px; }
+
+.wme-vbr-color {
+    width: 36px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    flex-shrink: 0;
+}
+.wme-vbr-del {
+    background: transparent;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 26px;
+    height: 26px;
+    line-height: 18px;
+    padding: 0;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+.wme-vbr-del:hover { background: #fee; border-color: #f99; }
+.wme-vbr-vel-suffix { font-size: 11px; color: #666; flex-shrink: 0; }
+`;
+    document.head.appendChild(style);
+}
+
+function criarSwitch(checked: boolean, onChange: (v: boolean) => void): { wrapper: HTMLElement; input: HTMLInputElement } {
+    const wrapper = document.createElement('label');
+    wrapper.className = 'wme-vbr-switch';
+    wrapper.title = 'Ativar/desativar regra';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = checked;
+    input.addEventListener('change', () => onChange(input.checked));
+    const slider = document.createElement('span');
+    slider.className = 'slider';
+    wrapper.appendChild(input);
+    wrapper.appendChild(slider);
+    return { wrapper, input };
+}
+
 function criarLinhaRegra(regra: Regra, onChange: () => void, onRemove: () => void): { el: HTMLElement; atualizarContagem: (n: number) => void } {
     const linha = document.createElement('div');
-    Object.assign(linha.style, {
-        display: 'grid',
-        gridTemplateColumns: 'auto 1fr auto auto auto auto auto',
-        gap: '4px',
-        alignItems: 'center',
-        padding: '4px 0',
-        borderBottom: '1px solid #eee',
-    } as CSSStyleDeclaration);
+    linha.className = 'wme-vbr-row';
 
-    const chk = document.createElement('input');
-    chk.type = 'checkbox';
-    chk.checked = regra.enabled;
-    chk.title = 'Ativar/desativar';
-    chk.addEventListener('change', () => { regra.enabled = chk.checked; onChange(); });
+    // ===== Linha de cima: switch + badge + tipo de via + remover =====
+    const top = document.createElement('div');
+    top.className = 'wme-vbr-row-top';
+
+    const sw = criarSwitch(regra.enabled, (v) => {
+        regra.enabled = v;
+        atualizarVisibilidadeBadge();
+        onChange();
+    });
+
+    const badge = document.createElement('span');
+    badge.className = 'wme-vbr-badge hidden';
+    badge.textContent = '0';
+    badge.title = 'Segmentos visíveis que casam esta regra';
 
     const selRoad = document.createElement('select');
-    selRoad.style.fontSize = '11px';
+    selRoad.className = 'wme-vbr-roadtype';
     for (const rt of ROAD_TYPES) {
         const opt = document.createElement('option');
         opt.value = String(rt.id);
@@ -178,9 +311,24 @@ function criarLinhaRegra(regra: Regra, onChange: () => void, onRemove: () => voi
         onChange();
     });
 
+    const btnDel = document.createElement('button');
+    btnDel.type = 'button';
+    btnDel.className = 'wme-vbr-del';
+    btnDel.textContent = '×';
+    btnDel.title = 'Remover regra';
+    btnDel.addEventListener('click', onRemove);
+
+    top.appendChild(sw.wrapper);
+    top.appendChild(badge);
+    top.appendChild(selRoad);
+    top.appendChild(btnDel);
+
+    // ===== Linha de baixo: operador + km/h + cor =====
+    const bottom = document.createElement('div');
+    bottom.className = 'wme-vbr-row-bottom';
+
     const selOp = document.createElement('select');
-    selOp.style.fontSize = '11px';
-    selOp.style.width = '46px';
+    selOp.className = 'wme-vbr-op';
     for (const op of OPERADORES) {
         const opt = document.createElement('option');
         opt.value = op;
@@ -195,11 +343,10 @@ function criarLinhaRegra(regra: Regra, onChange: () => void, onRemove: () => voi
 
     const inpVel = document.createElement('input');
     inpVel.type = 'number';
+    inpVel.className = 'wme-vbr-vel';
     inpVel.min = '0';
     inpVel.max = '200';
     inpVel.value = String(regra.velocidade);
-    inpVel.style.width = '52px';
-    inpVel.style.fontSize = '11px';
     inpVel.title = 'km/h';
     inpVel.addEventListener('change', () => {
         const v = parseInt(inpVel.value, 10);
@@ -207,88 +354,49 @@ function criarLinhaRegra(regra: Regra, onChange: () => void, onRemove: () => voi
         onChange();
     });
 
+    const sufixo = document.createElement('span');
+    sufixo.className = 'wme-vbr-vel-suffix';
+    sufixo.textContent = 'km/h';
+
     const inpCor = document.createElement('input');
     inpCor.type = 'color';
+    inpCor.className = 'wme-vbr-color';
     inpCor.value = regra.cor;
-    inpCor.style.width = '32px';
-    inpCor.style.height = '22px';
-    inpCor.style.border = 'none';
-    inpCor.style.padding = '0';
+    inpCor.title = 'Cor';
     inpCor.addEventListener('change', () => {
         regra.cor = inpCor.value;
+        atualizarVisibilidadeBadge();
         onChange();
     });
 
-    const btnDel = document.createElement('button');
-    btnDel.type = 'button';
-    btnDel.textContent = '×';
-    btnDel.title = 'Remover regra';
-    Object.assign(btnDel.style, {
-        background: 'transparent',
-        border: '1px solid #ccc',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        width: '22px',
-        height: '22px',
-        lineHeight: '18px',
-        padding: '0',
-    } as CSSStyleDeclaration);
-    btnDel.addEventListener('click', onRemove);
+    bottom.appendChild(selOp);
+    bottom.appendChild(inpVel);
+    bottom.appendChild(sufixo);
+    bottom.appendChild(inpCor);
 
-    const badge = document.createElement('span');
-    Object.assign(badge.style, {
-        display: 'inline-block',
-        minWidth: '24px',
-        textAlign: 'center',
-        fontSize: '10px',
-        fontWeight: 'bold',
-        padding: '2px 6px',
-        borderRadius: '10px',
-        background: '#eee',
-        color: '#333',
-    } as CSSStyleDeclaration);
-    badge.textContent = '0';
-    badge.title = 'Segmentos visíveis que casam esta regra';
+    linha.appendChild(top);
+    linha.appendChild(bottom);
 
-    linha.appendChild(chk);
-    linha.appendChild(selRoad);
-    linha.appendChild(selOp);
-    linha.appendChild(inpVel);
-    linha.appendChild(inpCor);
-    linha.appendChild(badge);
-    linha.appendChild(btnDel);
+    let ultimaContagem = 0;
+
+    function atualizarVisibilidadeBadge(): void {
+        const visivel = regra.enabled && ultimaContagem > 0;
+        badge.classList.toggle('hidden', !visivel);
+        badge.style.background = regra.cor;
+    }
 
     return {
         el: linha,
         atualizarContagem: (n: number) => {
+            ultimaContagem = n;
             badge.textContent = String(n);
-            badge.style.background = n > 0 ? regra.cor : '#eee';
-            badge.style.color = n > 0 ? '#fff' : '#333';
+            atualizarVisibilidadeBadge();
         },
     };
 }
 
 function renderizarRegras(container: HTMLElement, totalEl: HTMLElement): void {
     container.innerHTML = '';
-
-    const cabecalho = document.createElement('div');
-    Object.assign(cabecalho.style, {
-        display: 'grid',
-        gridTemplateColumns: 'auto 1fr auto auto auto auto auto',
-        gap: '4px',
-        alignItems: 'center',
-        fontSize: '10px',
-        fontWeight: 'bold',
-        color: '#666',
-        padding: '4px 0',
-        borderBottom: '2px solid #ccc',
-    } as CSSStyleDeclaration);
-    for (const txt of ['', 'Tipo de via', 'Op', 'km/h', 'Cor', 'Qtd', '']) {
-        const c = document.createElement('div');
-        c.textContent = txt;
-        cabecalho.appendChild(c);
-    }
-    container.appendChild(cabecalho);
 
     const reagir = () => { salvarConfig(); verificarVelocidades(); };
 
@@ -322,9 +430,14 @@ function renderizarRegras(container: HTMLElement, totalEl: HTMLElement): void {
 async function criarMenuInterativo(): Promise<void> {
     if (!sdk) return;
 
+    injetarEstilos();
+
     const { tabLabel, tabPane } = await sdk.Sidebar.registerScriptTab();
     tabLabel.innerText = '🚦 Validador BR';
     tabLabel.title = 'Validador de Velocidades BR';
+
+    tabPane.style.padding = '6px';
+    tabPane.style.boxSizing = 'border-box';
 
     const titulo = document.createElement('h4');
     titulo.innerText = 'Validador de Velocidades BR';
