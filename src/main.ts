@@ -1,5 +1,5 @@
 import type { WmeSDK, Segment, SdkFeature, RoadTypeId } from 'wme-sdk-typings';
-import { getCountryProfile, type CountryProfile, type RoadTypeEntry } from './countries';
+import { getCountryProfile, type CountryProfile } from './countries';
 import { getMessages, pickLocale, type Messages } from './i18n';
 import styles from './styles.css?inline';
 
@@ -8,7 +8,7 @@ const SCRIPT_NAME = 'WME Speed Limit Validator';
 const LAYER_NAME = 'wme-speed-limit-validator';
 const STORAGE_KEY = 'wme-speed-limit-validator:config:v2';
 
-type Operator = '==' | '!=' | '>' | '>=' | '<' | '<=';
+type Operator = '==' | '!=' | '>' | '>=' | '<' | '<=' | 'unset';
 
 interface Rule {
     id: string;
@@ -23,7 +23,7 @@ interface Config {
     rules: Rule[];
 }
 
-const OPERATORS: Operator[] = ['==', '!=', '>', '>=', '<', '<='];
+const OPERATORS: Operator[] = ['==', '!=', '>', '>=', '<', '<=', 'unset'];
 
 let sdk: WmeSDK | null = null;
 let debugMode = false;
@@ -55,6 +55,7 @@ function compare(a: number, op: Operator, b: number): boolean {
         case '>=': return a >= b;
         case '<': return a < b;
         case '<=': return a <= b;
+        case 'unset': return false; // handled separately in classify()
     }
 }
 
@@ -120,16 +121,34 @@ function findRoadTypeLabel(id: RoadTypeId): string {
 function classify(seg: Segment): { color: string; ruleId: string | null } | null {
     if (debugMode) return { color: '#00BFFF', ruleId: null };
 
-    const fwd = seg.fwdSpeedLimit ?? 0;
-    const rev = seg.revSpeedLimit ?? 0;
+    const fwd = seg.fwdSpeedLimit;
+    const rev = seg.revSpeedLimit;
+
+    // A two-way segment has both isAtoB and isBtoA = true.
+    // A one-way A->B has only isAtoB = true (and revSpeedLimit is naturally null).
+    const fwdActive = seg.isAtoB === true;
+    const revActive = seg.isBtoA === true;
 
     for (const rule of config.rules) {
         if (!rule.enabled) continue;
         if (seg.roadType !== rule.roadType) continue;
-        if (
-            compare(fwd, rule.operator, rule.speedKmh) ||
-            compare(rev, rule.operator, rule.speedKmh)
-        ) {
+
+        if (rule.operator === 'unset') {
+            // Match if any *active* direction is missing its speed limit.
+            const fwdMissing = fwdActive && (fwd === null || fwd === undefined);
+            const revMissing = revActive && (rev === null || rev === undefined);
+            if (fwdMissing || revMissing) {
+                return { color: rule.color, ruleId: rule.id };
+            }
+            continue;
+        }
+
+        const fwdMatches =
+            fwdActive && typeof fwd === 'number' && compare(fwd, rule.operator, rule.speedKmh);
+        const revMatches =
+            revActive && typeof rev === 'number' && compare(rev, rule.operator, rule.speedKmh);
+
+        if (fwdMatches || revMatches) {
             return { color: rule.color, ruleId: rule.id };
         }
     }
@@ -265,12 +284,13 @@ function createRuleRow(rule: Rule, onChange: () => void, onRemove: () => void): 
     for (const op of OPERATORS) {
         const opt = document.createElement('option');
         opt.value = op;
-        opt.textContent = op;
+        opt.textContent = op === 'unset' ? messages.operator.unset : op;
         if (op === rule.operator) opt.selected = true;
         opSelect.appendChild(opt);
     }
     opSelect.addEventListener('change', () => {
         rule.operator = opSelect.value as Operator;
+        updateOperatorUi();
         onChange();
     });
 
@@ -290,6 +310,13 @@ function createRuleRow(rule: Rule, onChange: () => void, onRemove: () => void): 
     const speedSuffix = document.createElement('span');
     speedSuffix.className = 'wme-vbr-vel-suffix';
     speedSuffix.textContent = messages.speedSuffix;
+
+    function updateOperatorUi(): void {
+        const isUnset = rule.operator === 'unset';
+        speedInput.classList.toggle('hidden', isUnset);
+        speedSuffix.classList.toggle('hidden', isUnset);
+    }
+    updateOperatorUi();
 
     const colorInput = document.createElement('input');
     colorInput.type = 'color';
@@ -581,6 +608,3 @@ if (document.readyState === 'loading') {
 } else {
     bootstrap().catch((e) => console.error(`[${SCRIPT_NAME}] error:`, e));
 }
-
-// Avoid "unused import" complaints if RoadTypeEntry becomes only structurally used.
-export type { RoadTypeEntry };

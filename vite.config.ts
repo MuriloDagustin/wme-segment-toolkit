@@ -23,7 +23,20 @@ export default defineConfig({
         }),
     ],
     build: {
-        minify: 'esbuild',
+        minify: 'terser',
         target: 'es2020',
+        sourcemap: false,
+        cssMinify: true,
+        terserOptions: {
+            compress: {
+                // Strip dev-only logs from the production bundle.
+                drop_debugger: true,
+                pure_funcs: ['console.debug', 'console.info'],
+                passes: 2,
+            },
+            format: {
+                comments: false,
+            },
+        },
     },
 });

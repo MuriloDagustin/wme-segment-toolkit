@@ -112,7 +112,12 @@
 }
 
 .wme-vbr-row select.wme-vbr-op {
-    width: 56px;
+    width: auto;
+    min-width: 56px;
+}
+
+.hidden {
+    display: none !important;
 }
 
 .wme-vbr-color {

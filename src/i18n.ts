@@ -22,6 +22,9 @@ export interface Messages {
         speed: string;
         color: string;
     };
+    operator: {
+        unset: string;
+    };
     speedSuffix: string;
     badgeTitle: string;
     deleteRule: string;
@@ -52,6 +55,9 @@ const EN: Messages = {
         speed: 'km/h',
         color: 'Color',
     },
+    operator: {
+        unset: 'no limit',
+    },
     speedSuffix: 'km/h',
     badgeTitle: 'Visible segments matching this rule',
     deleteRule: 'Remove rule',
@@ -81,6 +87,9 @@ const PT: Messages = {
         operator: 'Op',
         speed: 'km/h',
         color: 'Cor',
+    },
+    operator: {
+        unset: 'sem limite',
     },
     speedSuffix: 'km/h',
     badgeTitle: 'Segmentos visíveis que casam esta regra',
