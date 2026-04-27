@@ -2,7 +2,7 @@
 
 Userscript para o **Waze Map Editor (WME)**, construído com **Vite + TypeScript** e empacotado via `vite-plugin-monkey` como `.user.js` minificado para o **Tampermonkey**.
 
-Conjunto de ferramentas para inspecionar e corrigir segmentos no WME, organizado em três abas no painel lateral do editor.
+Conjunto de ferramentas para inspecionar e corrigir segmentos no WME, organizado em quatro abas no painel lateral do editor.
 
 ## Recursos
 
@@ -29,6 +29,13 @@ Botões para expandir a seleção a partir de um segmento.
 
 - **Selecionar rua inteira** — navega pelos nós e expande para todos os segmentos conectados que compartilham a mesma rua principal.
 - **Selecionar por nome** — variante mais agressiva: atravessa rotatórias seguindo o nome principal/alternativo.
+
+### 🚧 Aba **Problemas**
+Checagens prontas para problemas comuns de qualidade de mapa. Cada uma é um toggle independente com cor própria; os destaques saem em camada pontilhada (não conflita com as outras).
+
+- **Vias sem nome** — Streets, Primary Streets, Highways e Ramps sem `primaryStreetId` ou com nome vazio.
+- **Segmentos muito curtos (< 5m)** — frequentemente erros de mapa. Segmentos de rotatória são ignorados.
+- **Sem limite de velocidade** — Primary Streets e acima sem velocidade definida na(s) direção(ões) ativa(s); respeita one-way.
 
 ### Geral
 - Persistência em `localStorage` (chave versionada).
@@ -60,6 +67,8 @@ src/
   highlights.ts          # camada e features de velocidade
   name-classify.ts       # avaliação pura de regras de nome
   name-highlights.ts     # camada e features de nome (tracejado)
+  issues.ts              # checagens puras de problemas comuns
+  issues-highlights.ts   # camada e features de problemas (pontilhado)
   select-street.ts       # expansão de seleção (BFS por nós)
   i18n.ts                # mensagens PT/EN
   ui/
@@ -67,6 +76,7 @@ src/
     tabs/
       speed.ts           # aba Velocidades
       names.ts           # aba Nomes
+      issues.ts          # aba Problemas
       selection.ts       # aba Seleção
     rule-row.ts          # linha de regra de velocidade
     name-rule-row.ts     # linha de regra de nome
