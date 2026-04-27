@@ -69,6 +69,15 @@ export interface Messages {
         speed: string;
         selection: string;
         names: string;
+        issues: string;
+    };
+    issues: {
+        description: string;
+        total: (n: number) => string;
+        color: string;
+        unnamed: { label: string; help: string };
+        veryShort: { label: string; help: string };
+        noSpeedLimit: { label: string; help: string };
     };
     nameRule: {
         description: string;
@@ -160,6 +169,25 @@ const EN: Messages = {
         speed: 'Speed',
         selection: 'Selection',
         names: 'Names',
+        issues: 'Issues',
+    },
+    issues: {
+        description:
+            'Highlight common map quality issues. Each check is independent and uses its own color.',
+        total: (n) => `Total: ${n} segment(s) flagged`,
+        color: 'Highlight color',
+        unnamed: {
+            label: 'Unnamed roads',
+            help: 'Streets, primary streets, highways and ramps without a primary street name (or with empty name).',
+        },
+        veryShort: {
+            label: 'Very short segments (< 5m)',
+            help: 'Segments shorter than 5 meters, often map errors. Roundabout segments are skipped.',
+        },
+        noSpeedLimit: {
+            label: 'Missing speed limit',
+            help: 'Primary streets, highways and ramps with no speed limit set on the active direction(s).',
+        },
     },
     nameRule: {
         description:
@@ -267,6 +295,25 @@ const PT: Messages = {
         speed: 'Velocidades',
         selection: 'Seleção',
         names: 'Nomes',
+        issues: 'Problemas',
+    },
+    issues: {
+        description:
+            'Destaca problemas comuns de qualidade do mapa. Cada checagem é independente e usa cor própria.',
+        total: (n) => `Total: ${n} segmento(s) marcado(s)`,
+        color: 'Cor do destaque',
+        unnamed: {
+            label: 'Vias sem nome',
+            help: 'Ruas, vias principais, rodovias e ramais sem nome de rua principal (ou com nome vazio).',
+        },
+        veryShort: {
+            label: 'Segmentos muito curtos (< 5m)',
+            help: 'Segmentos com menos de 5 metros, comumente erros de mapa. Segmentos de rotatória são ignorados.',
+        },
+        noSpeedLimit: {
+            label: 'Sem limite de velocidade',
+            help: 'Vias principais, rodovias e ramais sem velocidade definida na(s) direção(ões) ativa(s).',
+        },
     },
     nameRule: {
         description:

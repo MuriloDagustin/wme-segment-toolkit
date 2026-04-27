@@ -35,9 +35,28 @@ export interface Config {
     rules: Rule[];
     /** Name-pattern + road-type rules (separate highlight layer). */
     nameRules?: NameRule[];
+    /** Per-issue toggle and color (separate highlight layer). */
+    issues?: IssuesConfig;
     /** User-selected country code; 'auto' or undefined means auto-detect. */
     selectedCountry?: string;
 }
+
+export type IssueId = 'unnamed' | 'veryShort' | 'noSpeedLimit';
+
+export interface IssueState {
+    enabled: boolean;
+    color: string;
+}
+
+export type IssuesConfig = Record<IssueId, IssueState>;
+
+export const ISSUE_IDS: IssueId[] = ['unnamed', 'veryShort', 'noSpeedLimit'];
+
+export const DEFAULT_ISSUES_CONFIG: IssuesConfig = {
+    unnamed: { enabled: false, color: '#FF9800' },
+    veryShort: { enabled: false, color: '#E91E63' },
+    noSpeedLimit: { enabled: false, color: '#00BCD4' },
+};
 
 export const OPERATORS: Operator[] = ['==', '!=', '>', '>=', '<', '<=', 'unset'];
 export const VERIFIED_FILTERS: VerifiedFilter[] = ['any', 'verified', 'unverified'];

@@ -16,6 +16,11 @@ import {
     refreshNameHighlights,
     setupNameHighlightLayer,
 } from './name-highlights';
+import {
+    refreshIssuesHighlights,
+    setupIssuesLayer,
+} from './issues-highlights';
+import type { IssueId } from './config';
 import { detectContext } from './sdk-bootstrap';
 import { buildPanel } from './ui/panel';
 import { injectStyles } from './ui/styles';
@@ -46,11 +51,22 @@ export class App {
     nameMatchCounts: Record<string, number> = {};
     nameTotal = 0;
 
+    /** Per-issue match counts (last refresh). */
+    issuesMatchCounts: Record<IssueId, number> = {
+        unnamed: 0,
+        veryShort: 0,
+        noSpeedLimit: 0,
+    };
+    issuesTotal = 0;
+
     /** Set by the panel so refreshHighlights can notify the UI. */
     onCountsUpdated: (() => void) | null = null;
 
     /** Set by the names tab so refreshNameHighlights can notify the UI. */
     onNameCountsUpdated: (() => void) | null = null;
+
+    /** Set by the issues tab so refreshIssuesHighlights can notify the UI. */
+    onIssuesCountsUpdated: (() => void) | null = null;
 
     constructor(sdk: WmeSDK) {
         this.sdk = sdk;
@@ -96,6 +112,11 @@ export class App {
         this.nameTotal = nameResult.totalFeatures;
         this.onNameCountsUpdated?.();
 
+        const issuesResult = refreshIssuesHighlights(this.sdk, this.config);
+        this.issuesMatchCounts = issuesResult.matchCounts;
+        this.issuesTotal = issuesResult.totalFeatures;
+        this.onIssuesCountsUpdated?.();
+
         return result;
     }
 
@@ -105,6 +126,7 @@ export class App {
 
         setupHighlightLayer(this.sdk);
         setupNameHighlightLayer(this.sdk);
+        setupIssuesLayer(this.sdk);
 
         injectStyles();
         buildPanel(this).catch((e) =>
