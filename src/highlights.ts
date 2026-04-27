@@ -11,6 +11,7 @@ export const LAYER_NAME = 'wme-speed-limit-validator';
 export function setupHighlightLayer(sdk: WmeSDK): void {
     sdk.Map.addLayer({
         layerName: LAYER_NAME,
+        zIndexing: true,
         styleContext: {
             getStrokeColor: ({ feature }) =>
                 (feature?.properties?.color as string | undefined) ?? DEBUG_COLOR,

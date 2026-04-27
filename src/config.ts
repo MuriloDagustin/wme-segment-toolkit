@@ -37,6 +37,8 @@ export interface Config {
     nameRules?: NameRule[];
     /** Per-issue toggle and color (separate highlight layer). */
     issues?: IssuesConfig;
+    /** Per-layer draw order (z-index). Higher = painted on top. */
+    layerZIndex?: LayerZIndexConfig;
     /** User-selected country code; 'auto' or undefined means auto-detect. */
     selectedCountry?: string;
 }
@@ -56,6 +58,20 @@ export const DEFAULT_ISSUES_CONFIG: IssuesConfig = {
     unnamed: { enabled: false, color: '#FF9800' },
     veryShort: { enabled: false, color: '#E91E63' },
     noSpeedLimit: { enabled: false, color: '#00BCD4' },
+};
+
+/** Highlight layers whose draw order can be customised by the user. */
+export type HighlightLayerKey = 'speed' | 'names' | 'issues';
+
+export type LayerZIndexConfig = Record<HighlightLayerKey, number>;
+
+export const HIGHLIGHT_LAYER_KEYS: HighlightLayerKey[] = ['speed', 'names', 'issues'];
+
+/** Defaults — issues on top so missing-data alerts win when overlapping. */
+export const DEFAULT_LAYER_Z_INDEX: LayerZIndexConfig = {
+    speed: 100,
+    names: 200,
+    issues: 300,
 };
 
 export const OPERATORS: Operator[] = ['==', '!=', '>', '>=', '<', '<=', 'unset'];

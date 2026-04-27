@@ -1,6 +1,7 @@
 import { newId, type NameRule } from '../../config';
 import type { App } from '../../app';
 import { createNameRuleRow, type NameRuleRowHandle } from '../name-rule-row';
+import { createLayerZIndexControl } from '../layer-zindex-control';
 
 /**
  * Build the "Names" tab: rules that highlight segments by street-name pattern
@@ -15,6 +16,7 @@ export function buildNamesTab(app: App, container: HTMLElement): void {
 
     const totalEl = createTotalElement(app);
 
+    container.appendChild(createLayerZIndexControl(app, 'names'));
     container.appendChild(rulesContainer);
     container.appendChild(totalEl);
 

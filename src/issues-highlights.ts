@@ -6,13 +6,13 @@ import { DEFAULT_ISSUES_CONFIG } from './config';
 export const ISSUES_LAYER_NAME = 'wme-segment-toolkit-issues';
 
 /**
- * Register the issues highlight layer. Drawn dotted (distinct from the solid
- * speed layer and the dashed name layer) so that overlapping highlights remain
- * readable.
+ * Register the issues highlight layer. Drawn solid (same shape as the other
+ * highlight layers) — overlap is resolved via the user-controlled z-index.
  */
 export function setupIssuesLayer(sdk: WmeSDK): void {
     sdk.Map.addLayer({
         layerName: ISSUES_LAYER_NAME,
+        zIndexing: true,
         styleContext: {
             getStrokeColor: ({ feature }) =>
                 (feature?.properties?.color as string | undefined) ?? '#FF00FF',
@@ -21,10 +21,9 @@ export function setupIssuesLayer(sdk: WmeSDK): void {
             {
                 style: {
                     strokeColor: '${getStrokeColor}',
-                    strokeWidth: 5,
-                    strokeOpacity: 0.8,
-                    strokeLinecap: 'butt',
-                    strokeDashstyle: 'dot',
+                    strokeWidth: 6,
+                    strokeOpacity: 0.65,
+                    strokeLinecap: 'round',
                 },
             },
         ],

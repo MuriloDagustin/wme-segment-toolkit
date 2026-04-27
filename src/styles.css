@@ -259,3 +259,29 @@
     border-color: #1976d2;
     color: #fff;
 }
+
+.wme-vbr-zindex {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    margin: 6px 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background: #fafafa;
+    font-size: 11px;
+    color: #555;
+    cursor: help;
+}
+
+.wme-vbr-zindex-label {
+    font-weight: 500;
+}
+
+.wme-vbr-zindex-input {
+    width: 70px;
+    padding: 2px 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 11px;
+}

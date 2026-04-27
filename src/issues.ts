@@ -83,6 +83,9 @@ export function isUnnamed(
     nameLookup: StreetNameLookup,
 ): boolean {
     if (!NAMED_ROAD_TYPES.has(segment.roadType)) return false;
+    // Roundabout segments often share a single (sometimes unnamed) virtual
+    // street, which is fine — flag the surrounding segments instead.
+    if (segment.junctionId != null) return false;
     if (segment.primaryStreetId == null) return true;
     const name = nameLookup(segment.primaryStreetId);
     return !name || name.trim() === '';
@@ -97,6 +100,9 @@ export function isVeryShort(segment: IssueCheckableSegment): boolean {
 export function isMissingSpeedLimit(segment: IssueCheckableSegment): boolean {
     if (!SPEED_LIMITED_ROAD_TYPES.has(segment.roadType)) return false;
     if (segment.allowNoDirection) return false;
+    // Roundabouts inherit context from connected segments; ignoring them
+    // avoids spamming the map with hits on every rotary.
+    if (segment.junctionId != null) return false;
 
     // For one-way segments only check the active direction. For two-way
     // segments both directions must be missing to be flagged (otherwise a

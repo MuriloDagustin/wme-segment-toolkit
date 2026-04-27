@@ -6,6 +6,7 @@ import {
     type IssuesConfig,
 } from '../../config';
 import { createSwitch } from '../switch';
+import { createLayerZIndexControl } from '../layer-zindex-control';
 
 /**
  * Build the "Issues" tab: one toggleable check per common map-quality issue.
@@ -18,21 +19,29 @@ export function buildIssuesTab(app: App, container: HTMLElement): void {
     const issuesConfig = ensureIssuesConfig(app);
     const totalEl = createTotalElement(app);
 
+    container.appendChild(createLayerZIndexControl(app, 'issues'));
+
     const list = document.createElement('div');
     list.style.display = 'flex';
     list.style.flexDirection = 'column';
     list.style.gap = '6px';
 
+    const badgeUpdaters: Array<() => void> = [];
     for (const id of ISSUE_IDS) {
-        list.appendChild(createIssueRow(app, id, issuesConfig, totalEl));
+        const { row, updateBadge } = createIssueRow(app, id, issuesConfig);
+        list.appendChild(row);
+        badgeUpdaters.push(updateBadge);
     }
 
     container.appendChild(list);
     container.appendChild(totalEl);
 
-    app.onIssuesCountsUpdated = () => {
+    const update = (): void => {
+        for (const fn of badgeUpdaters) fn();
         totalEl.textContent = app.messages.issues.total(app.issuesTotal);
     };
+    app.onIssuesCountsUpdated = update;
+    update();
 }
 
 // ---------------------------------------------------------------------------
@@ -72,8 +81,7 @@ function createIssueRow(
     app: App,
     id: IssueId,
     issuesConfig: IssuesConfig,
-    totalEl: HTMLElement,
-): HTMLElement {
+): { row: HTMLElement; updateBadge: () => void } {
     const row = document.createElement('div');
     row.className = 'wme-vbr-row';
 
@@ -120,19 +128,12 @@ function createIssueRow(
     top.appendChild(colorInput);
     row.appendChild(top);
 
-    // Hook up live count in the badge.
-    const updateBadge = () => {
+    const updateBadge = (): void => {
         const count = app.issuesMatchCounts[id] ?? 0;
         badge.textContent = String(count);
-        badge.classList.toggle('hidden', count === 0);
-    };
-    updateBadge();
-    const previousHook = app.onIssuesCountsUpdated;
-    app.onIssuesCountsUpdated = () => {
-        previousHook?.();
-        updateBadge();
-        totalEl.textContent = app.messages.issues.total(app.issuesTotal);
+        badge.style.background = state.color;
+        badge.classList.toggle('hidden', !state.enabled || count === 0);
     };
 
-    return row;
+    return { row, updateBadge };
 }

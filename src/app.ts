@@ -20,6 +20,7 @@ import {
     refreshIssuesHighlights,
     setupIssuesLayer,
 } from './issues-highlights';
+import { applyAllLayerZIndexes } from './layer-zindex';
 import type { IssueId } from './config';
 import { detectContext } from './sdk-bootstrap';
 import { buildPanel } from './ui/panel';
@@ -127,6 +128,7 @@ export class App {
         setupHighlightLayer(this.sdk);
         setupNameHighlightLayer(this.sdk);
         setupIssuesLayer(this.sdk);
+        applyAllLayerZIndexes(this.sdk, this.config);
 
         injectStyles();
         buildPanel(this).catch((e) =>

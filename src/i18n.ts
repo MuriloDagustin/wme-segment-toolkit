@@ -79,6 +79,10 @@ export interface Messages {
         veryShort: { label: string; help: string };
         noSpeedLimit: { label: string; help: string };
     };
+    layerZIndex: {
+        label: string;
+        help: string;
+    };
     nameRule: {
         description: string;
         addRule: string;
@@ -188,6 +192,10 @@ const EN: Messages = {
             label: 'Missing speed limit',
             help: 'Primary streets, highways and ramps with no speed limit set on the active direction(s).',
         },
+    },
+    layerZIndex: {
+        label: 'Draw order (z-index)',
+        help: 'Z-index of this highlight layer. Higher = painted on top of layers with lower z-index. Useful when several tabs flag the same segment.',
     },
     nameRule: {
         description:
@@ -314,6 +322,10 @@ const PT: Messages = {
             label: 'Sem limite de velocidade',
             help: 'Vias principais, rodovias e ramais sem velocidade definida na(s) direção(ões) ativa(s).',
         },
+    },
+    layerZIndex: {
+        label: 'Ordem de desenho (z-index)',
+        help: 'Z-index desta camada de destaque. Valor maior = pintado por cima de camadas com z-index menor. Útil quando várias abas marcam o mesmo segmento.',
     },
     nameRule: {
         description:

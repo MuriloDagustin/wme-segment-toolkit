@@ -3,6 +3,7 @@ import { AVAILABLE_PROFILES } from '../../countries';
 import type { App } from '../../app';
 import { createSwitch } from '../switch';
 import { createRuleRow, type RuleRowHandle } from '../rule-row';
+import { createLayerZIndexControl } from '../layer-zindex-control';
 
 /**
  * Build the "Speed Validator" tab: country selector, debug toggle, rules list,
@@ -21,6 +22,8 @@ export function buildSpeedTab(app: App, container: HTMLElement): void {
         app.refresh();
     });
     appendDebugSwitch(container, app);
+
+    container.appendChild(createLayerZIndexControl(app, 'speed'));
 
     container.appendChild(rulesContainer);
     container.appendChild(totalEl);

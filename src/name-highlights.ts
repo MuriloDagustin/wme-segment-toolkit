@@ -12,6 +12,7 @@ export const NAME_LAYER_NAME = 'wme-segment-toolkit-name-highlight';
 export function setupNameHighlightLayer(sdk: WmeSDK): void {
     sdk.Map.addLayer({
         layerName: NAME_LAYER_NAME,
+        zIndexing: true,
         styleContext: {
             getStrokeColor: ({ feature }) =>
                 (feature?.properties?.color as string | undefined) ?? '#FF00FF',
@@ -20,10 +21,9 @@ export function setupNameHighlightLayer(sdk: WmeSDK): void {
             {
                 style: {
                     strokeColor: '${getStrokeColor}',
-                    strokeWidth: 4,
-                    strokeOpacity: 0.85,
+                    strokeWidth: 6,
+                    strokeOpacity: 0.65,
                     strokeLinecap: 'round',
-                    strokeDashstyle: 'dash',
                 },
             },
         ],
