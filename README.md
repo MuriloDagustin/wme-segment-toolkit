@@ -1,21 +1,86 @@
-# VelocityDiff
+# WME Segment Toolkit
 
-Userscript para o Waze Map Editor (WME) construído com **Vite + TypeScript** e empacotado como `.user.js` minificado para o **Tampermonkey**.
+Userscript para o **Waze Map Editor (WME)**, construído com **Vite + TypeScript** e empacotado via `vite-plugin-monkey` como `.user.js` minificado para o **Tampermonkey**.
+
+Conjunto de ferramentas para inspecionar e corrigir segmentos no WME, organizado em três abas no painel lateral do editor.
+
+## Recursos
+
+### 🚦 Aba **Velocidades**
+Destaca no mapa segmentos que casam com regras configuráveis sobre o limite de velocidade.
+
+- Regras por **tipo de via**, **operador** (`==`, `!=`, `>`, `>=`, `<`, `<=`, `sem limite`), **velocidade (km/h)** e **cor**.
+- Filtro por status de **verificação** do limite (qualquer / verificado / não verificado).
+- Casa nas duas direções (`fwd` ou `rev`); um segmento é destacado se *qualquer* regra ativa casar.
+- Perfil por país (lista de tipos de via e velocidades padrão), com **auto-detecção** pelo país visível no mapa.
+- Modo **debug**: pinta tudo de ciano para validar que a camada está renderizando.
+- Contador de matches por regra (badge) e total geral.
+
+### 🏷️ Aba **Nomes**
+Destaca segmentos cujo nome de rua casa com um padrão, opcionalmente filtrado por tipo de via. Útil para encontrar avenidas/rodovias mal classificadas.
+
+- **Padrão** de texto, case-insensitive, com 3 modos: `começa com`, `contém`, `igual a`.
+- **Fonte do nome**: principal, alternativo ou qualquer.
+- **Filtro de tipo de via** com chips clicáveis, em modo `é um destes` ou `NÃO é um destes` (vazio = ignora tipo).
+- Camada própria com tracejado, para sobrepor sem conflito aos destaques de velocidade.
+
+### 🎯 Aba **Seleção**
+Botões para expandir a seleção a partir de um segmento.
+
+- **Selecionar rua inteira** — navega pelos nós e expande para todos os segmentos conectados que compartilham a mesma rua principal.
+- **Selecionar por nome** — variante mais agressiva: atravessa rotatórias seguindo o nome principal/alternativo.
+
+### Geral
+- Persistência em `localStorage` (chave versionada).
+- i18n: **PT-BR** e **EN**, escolhido automaticamente pelo locale do WME.
+- Tooltips em todos os controles.
 
 ## Scripts
 
-- `npm run dev` — build em watch mode (gera `.user.js` a cada alteração).
-- `npm run build` — type-check + build de produção minificado em `dist/`.
+- `npm install` — instala dependências.
+- `npm run dev` — build em watch mode.
+- `npm run build` — type-check + build de produção minificado.
+- `npm test` — roda a suíte Vitest (lógica pura: classificação por nome, regras de velocidade, detecção de país, parsing de config).
 
 ## Instalação no Tampermonkey
 
-1. Rode `npm install` e depois `npm run build`.
-2. O arquivo final ficará em `dist/velocity-diff.user.js`.
-3. No Tampermonkey, vá em *Dashboard → Utilities → Import from file*, ou simplesmente arraste o arquivo para o navegador para instalar.
-4. Para desenvolvimento, use `npm run dev` e configure o Tampermonkey para servir o script localmente (ou recarregue o arquivo após cada build).
+1. `npm install` e `npm run build`.
+2. O arquivo final fica em `dist/wme-segment-toolkit.user.js`.
+3. No Tampermonkey: *Dashboard → Utilities → Import from file*, ou arraste o `.user.js` para o navegador.
+4. Para desenvolvimento, use `npm run dev` e recarregue o script no Tampermonkey após cada build.
 
-## Sobre o SDK
+## Estrutura
 
-O script obtém o SDK via `window.getWmeSdk({ scriptId, scriptName })` após aguardar `window.SDK_INITIALIZED`, conforme o fluxo recomendado pelo WME.
+```
+src/
+  app.ts                 # orquestração (SDK ready, refresh loop, layers)
+  config.ts              # tipos e (de)serialização de regras (speed + name)
+  countries.ts           # perfis por país e auto-detecção
+  rules.ts               # avaliação de regras de velocidade
+  highlights.ts          # camada e features de velocidade
+  name-classify.ts       # avaliação pura de regras de nome
+  name-highlights.ts     # camada e features de nome (tracejado)
+  select-street.ts       # expansão de seleção (BFS por nós)
+  i18n.ts                # mensagens PT/EN
+  ui/
+    panel.ts             # painel lateral + tabs
+    tabs/
+      speed.ts           # aba Velocidades
+      names.ts           # aba Nomes
+      selection.ts       # aba Seleção
+    rule-row.ts          # linha de regra de velocidade
+    name-rule-row.ts     # linha de regra de nome
+    tabs.ts              # componente genérico de tabs
+  styles.css             # estilos do painel
+```
 
-> Substitua `src/types/wme-sdk.d.ts` pelos tipos oficiais quando desejar tipagem completa.
+## SDK
+
+O script obtém o SDK via `window.getWmeSdk({ scriptId, scriptName })` após aguardar `window.SDK_INITIALIZED`. Tipos oficiais em `wme-sdk-typings`.
+
+## Stack
+
+- TypeScript 5.6 (`strict`, target ES2020)
+- Vite 5.4 + `vite-plugin-monkey`
+- Vitest 2 + happy-dom
+- Sem dependências de runtime — só o SDK do WME.
