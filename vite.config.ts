@@ -18,6 +18,7 @@ const META_FILE_NAME = 'wme-segment-toolkit.meta.js';
 // the `.meta.js` and fetch the new `.user.js` whenever a release is cut.
 const DOWNLOAD_URL = `https://github.com/${REPO}/releases/latest/download/${FILE_NAME}`;
 const UPDATE_URL = `https://github.com/${REPO}/releases/latest/download/${META_FILE_NAME}`;
+const ICON_URL = `https://raw.githubusercontent.com/${REPO}/main/assets/wme-segment-toolkit-logo.png`;
 
 export default defineConfig({
     plugins: [
@@ -26,6 +27,7 @@ export default defineConfig({
             userscript: {
                 name: 'WME Segment Toolkit',
                 namespace: 'http://tampermonkey.net/',
+                icon: ICON_URL,
                 match: ['https://www.waze.com/*/editor*', 'https://beta.waze.com/*/editor*'],
                 exclude: ['https://www.waze.com/user/editor*'],
                 grant: 'none',
