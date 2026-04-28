@@ -70,6 +70,7 @@ export interface Messages {
         selection: string;
         names: string;
         issues: string;
+        stats: string;
     };
     issues: {
         description: string;
@@ -78,6 +79,26 @@ export interface Messages {
         unnamed: { label: string; help: string };
         veryShort: { label: string; help: string };
         noSpeedLimit: { label: string; help: string };
+    };
+    stats: {
+        description: string;
+        empty: string;
+        segments: string;
+        length: string;
+        nodes: string;
+        streets: string;
+        speedRange: string;
+        speedAvg: string;
+        roadTypes: string;
+        flags: string;
+        oneWay: string;
+        roundabout: string;
+        tunnel: string;
+        unpaved: string;
+        closures: string;
+        restrictions: string;
+        houseNumbers: string;
+        noSpeedData: string;
     };
     layerZIndex: {
         label: string;
@@ -174,6 +195,7 @@ const EN: Messages = {
         selection: 'Selection',
         names: 'Names',
         issues: 'Issues',
+        stats: 'Stats',
     },
     issues: {
         description:
@@ -192,6 +214,27 @@ const EN: Messages = {
             label: 'Missing speed limit',
             help: 'Primary streets, highways and ramps with no speed limit set on the active direction(s).',
         },
+    },
+    stats: {
+        description:
+            'Live statistics for the current segment selection. Use "Select whole street" or shift-click in the map to build a selection.',
+        empty: 'Select one or more segments to see statistics here.',
+        segments: 'Segments',
+        length: 'Total length',
+        nodes: 'Distinct nodes',
+        streets: 'Distinct streets',
+        speedRange: 'Speed range',
+        speedAvg: 'Average speed (length-weighted)',
+        roadTypes: 'By road type',
+        flags: 'Flags',
+        oneWay: 'one-way',
+        roundabout: 'in roundabout',
+        tunnel: 'tunnel',
+        unpaved: 'unpaved',
+        closures: 'with closures',
+        restrictions: 'with restrictions',
+        houseNumbers: 'with house numbers',
+        noSpeedData: 'no active-direction speed data',
     },
     layerZIndex: {
         label: 'Draw order (z-index)',
@@ -304,6 +347,7 @@ const PT: Messages = {
         selection: 'Seleção',
         names: 'Nomes',
         issues: 'Problemas',
+        stats: 'Estatísticas',
     },
     issues: {
         description:
@@ -322,6 +366,27 @@ const PT: Messages = {
             label: 'Sem limite de velocidade',
             help: 'Vias principais, rodovias e ramais sem velocidade definida na(s) direção(ões) ativa(s).',
         },
+    },
+    stats: {
+        description:
+            'Estatísticas em tempo real da seleção atual. Use "Selecionar rua inteira" ou shift+clique no mapa para montar uma seleção.',
+        empty: 'Selecione um ou mais segmentos para ver estatísticas aqui.',
+        segments: 'Segmentos',
+        length: 'Comprimento total',
+        nodes: 'Nós distintos',
+        streets: 'Ruas distintas',
+        speedRange: 'Faixa de velocidade',
+        speedAvg: 'Velocidade média (ponderada por comprimento)',
+        roadTypes: 'Por tipo de via',
+        flags: 'Marcadores',
+        oneWay: 'mão única',
+        roundabout: 'em rotatória',
+        tunnel: 'túnel',
+        unpaved: 'não pavimentado',
+        closures: 'com fechamentos',
+        restrictions: 'com restrições',
+        houseNumbers: 'com numeração',
+        noSpeedData: 'sem dados de velocidade na direção ativa',
     },
     layerZIndex: {
         label: 'Ordem de desenho (z-index)',
