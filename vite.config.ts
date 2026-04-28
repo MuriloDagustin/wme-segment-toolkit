@@ -1,5 +1,23 @@
 import { defineConfig } from 'vite';
 import monkey from 'vite-plugin-monkey';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(
+    readFileSync(resolve(__dirname, 'package.json'), 'utf8'),
+) as { version: string };
+
+const REPO = 'MuriloDagustin/wme-segment-toolkit';
+const FILE_NAME = 'wme-segment-toolkit.user.js';
+const META_FILE_NAME = 'wme-segment-toolkit.meta.js';
+
+// `releases/latest/download/...` always resolves to the asset of the most
+// recent published GitHub Release, so Tampermonkey/Violentmonkey can poll
+// the `.meta.js` and fetch the new `.user.js` whenever a release is cut.
+const DOWNLOAD_URL = `https://github.com/${REPO}/releases/latest/download/${FILE_NAME}`;
+const UPDATE_URL = `https://github.com/${REPO}/releases/latest/download/${META_FILE_NAME}`;
 
 export default defineConfig({
     plugins: [
@@ -13,12 +31,18 @@ export default defineConfig({
                 grant: 'none',
                 'run-at': 'document-end',
                 description: 'Toolkit for WME segment editing: speed-limit validator, select whole street and more.',
-                author: 'Murilo D\'agustin',
-                version: '1.0.0',
+                author: "Murilo D'agustin",
+                version: pkg.version,
+                homepageURL: `https://github.com/${REPO}`,
+                supportURL: `https://github.com/${REPO}/issues`,
+                downloadURL: DOWNLOAD_URL,
+                updateURL: UPDATE_URL,
             },
             build: {
-                // Generates a single .user.js with everything bundled & minified by Vite.
-                fileName: 'wme-segment-toolkit.user.js',
+                fileName: FILE_NAME,
+                // Emits a small `<name>.meta.js` containing only the metadata
+                // block; pointed at by `@updateURL` for fast update checks.
+                metaFileName: META_FILE_NAME,
             },
         }),
     ],

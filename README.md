@@ -51,10 +51,27 @@ Checagens prontas para problemas comuns de qualidade de mapa. Cada uma é um tog
 
 ## Instalação no Tampermonkey
 
+### Recomendado (auto-update via GitHub Releases)
+
+Instale direto pelo link do release mais recente — o Tampermonkey/Violentmonkey vai checar atualizações sozinho:
+
+- [wme-segment-toolkit.user.js (latest release)](https://github.com/MuriloDagustin/wme-segment-toolkit/releases/latest/download/wme-segment-toolkit.user.js)
+
+O script tem `@updateURL` apontando para o `.meta.js` do mesmo release, então novas versões publicadas no GitHub aparecem automaticamente como update.
+
+### Build local (desenvolvimento)
+
 1. `npm install` e `npm run build`.
 2. O arquivo final fica em `dist/wme-segment-toolkit.user.js`.
 3. No Tampermonkey: *Dashboard → Utilities → Import from file*, ou arraste o `.user.js` para o navegador.
 4. Para desenvolvimento, use `npm run dev` e recarregue o script no Tampermonkey após cada build.
+
+## Releases
+
+O versionamento é automatizado com [release-please](https://github.com/googleapis/release-please) baseado em [Conventional Commits](https://www.conventionalcommits.org/):
+
+- A cada push em `main`, o workflow mantém uma **Release PR** aberta com bump de versão e CHANGELOG gerados a partir dos commits (`feat:`, `fix:`, `feat!:`/`BREAKING CHANGE:`, etc.).
+- Mergeando essa PR, o GitHub Release é criado e o mesmo workflow builda o userscript com a versão nova já no header e anexa `.user.js` + `.meta.js` ao release.
 
 ## Estrutura
 
