@@ -106,6 +106,20 @@
     display: none;
 }
 
+.wme-vbr-badge-clickable {
+    cursor: pointer;
+    user-select: none;
+    transition: filter 0.15s, transform 0.05s;
+}
+
+.wme-vbr-badge-clickable:hover {
+    filter: brightness(1.15);
+}
+
+.wme-vbr-badge-clickable:active {
+    transform: scale(0.95);
+}
+
 .wme-vbr-row select,
 .wme-vbr-row input[type="number"] {
     font-size: 12px;

@@ -31,6 +31,8 @@ export function setupHighlightLayer(sdk: WmeSDK): void {
 
 export interface RefreshResult {
     matchCounts: Record<string, number>;
+    /** Segment IDs that matched each rule (parallel to `matchCounts`). */
+    segmentIdsByRule: Record<string, number[]>;
     debugCount: number;
     totalFeatures: number;
 }
@@ -47,6 +49,7 @@ export function refreshHighlights(
     sdk.Map.removeAllFeaturesFromLayer({ layerName: LAYER_NAME });
 
     const matchCounts: Record<string, number> = {};
+    const segmentIdsByRule: Record<string, number[]> = {};
     let debugCount = 0;
     const features: SdkFeature[] = [];
 
@@ -58,6 +61,7 @@ export function refreshHighlights(
             debugCount++;
         } else if (result.ruleId) {
             matchCounts[result.ruleId] = (matchCounts[result.ruleId] ?? 0) + 1;
+            (segmentIdsByRule[result.ruleId] ??= []).push(seg.id);
         }
 
         features.push({
@@ -72,5 +76,5 @@ export function refreshHighlights(
         sdk.Map.addFeaturesToLayer({ features, layerName: LAYER_NAME });
     }
 
-    return { matchCounts, debugCount, totalFeatures: features.length };
+    return { matchCounts, segmentIdsByRule, debugCount, totalFeatures: features.length };
 }

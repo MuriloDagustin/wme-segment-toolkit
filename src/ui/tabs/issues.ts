@@ -98,10 +98,15 @@ function createIssueRow(
     }, labels.help);
 
     const badge = document.createElement('span');
-    badge.className = 'wme-vbr-badge';
+    badge.className = 'wme-vbr-badge wme-vbr-badge-clickable';
     badge.style.background = state.color;
     badge.title = app.messages.badgeTitle;
     badge.textContent = '0';
+    badge.addEventListener('click', () => {
+        if (!state.enabled) return;
+        const ids = app.issuesMatchSegmentIds[id] ?? [];
+        if (ids.length > 0) app.jumpToNearestSegment(ids);
+    });
 
     const label = document.createElement('span');
     label.style.flex = '1';

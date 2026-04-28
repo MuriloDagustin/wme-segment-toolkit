@@ -21,6 +21,8 @@ export interface RuleRowDeps {
     messages: Messages;
     onChange: () => void;
     onRemove: () => void;
+    /** Invoked when the user clicks the match-count badge. */
+    onJump?: () => void;
 }
 
 function createRoadTypeSelect(
@@ -51,7 +53,7 @@ function createRoadTypeSelect(
  * the caller invokes when match counts change.
  */
 export function createRuleRow(deps: RuleRowDeps): RuleRowHandle {
-    const { rule, profile, messages, onChange, onRemove } = deps;
+    const { rule, profile, messages, onChange, onRemove, onJump } = deps;
 
     const row = document.createElement('div');
     row.className = 'wme-vbr-row';
@@ -76,6 +78,12 @@ export function createRuleRow(deps: RuleRowDeps): RuleRowHandle {
     badge.className = 'wme-vbr-badge hidden';
     badge.textContent = '0';
     badge.title = messages.badgeTitle;
+    if (onJump) {
+        badge.classList.add('wme-vbr-badge-clickable');
+        badge.addEventListener('click', () => {
+            if (lastCount > 0 && rule.enabled) onJump();
+        });
+    }
 
     const roadSelect = createRoadTypeSelect(profile, rule.roadType, (id) => {
         rule.roadType = id;

@@ -124,6 +124,7 @@ function renderRules(container: HTMLElement, totalEl: HTMLElement, app: App): vo
                 renderRules(container, totalEl, app);
                 app.refresh();
             },
+            onJump: () => app.jumpToNearestSegment(app.nameMatchSegmentIds[rule.id] ?? []),
         });
         container.appendChild(handle.el);
         handles.push({ ruleId: rule.id, handle });

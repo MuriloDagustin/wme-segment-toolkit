@@ -23,6 +23,7 @@ import {
 import { applyAllLayerZIndexes } from './layer-zindex';
 import type { IssueId } from './config';
 import { detectContext } from './sdk-bootstrap';
+import { jumpToNearestSegment } from './jump-to-segment';
 import { buildPanel } from './ui/panel';
 import { injectStyles } from './ui/styles';
 
@@ -46,10 +47,14 @@ export class App {
 
     /** Current per-rule match counts (last refresh). */
     matchCounts: Record<string, number> = {};
+    /** Segment IDs that matched each speed rule (last refresh). */
+    matchSegmentIds: Record<string, number[]> = {};
     debugCount = 0;
 
     /** Per-rule match counts for name rules (last refresh). */
     nameMatchCounts: Record<string, number> = {};
+    /** Segment IDs that matched each name rule (last refresh). */
+    nameMatchSegmentIds: Record<string, number[]> = {};
     nameTotal = 0;
 
     /** Per-issue match counts (last refresh). */
@@ -57,6 +62,12 @@ export class App {
         unnamed: 0,
         veryShort: 0,
         noSpeedLimit: 0,
+    };
+    /** Segment IDs that matched each issue (last refresh). */
+    issuesMatchSegmentIds: Record<IssueId, number[]> = {
+        unnamed: [],
+        veryShort: [],
+        noSpeedLimit: [],
     };
     issuesTotal = 0;
 
@@ -105,20 +116,31 @@ export class App {
     refresh(): RefreshResult {
         const result = refreshHighlights(this.sdk, this.config, this.debugMode);
         this.matchCounts = result.matchCounts;
+        this.matchSegmentIds = result.segmentIdsByRule;
         this.debugCount = result.debugCount;
         this.onCountsUpdated?.();
 
         const nameResult = refreshNameHighlights(this.sdk, this.config);
         this.nameMatchCounts = nameResult.matchCounts;
+        this.nameMatchSegmentIds = nameResult.segmentIdsByRule;
         this.nameTotal = nameResult.totalFeatures;
         this.onNameCountsUpdated?.();
 
         const issuesResult = refreshIssuesHighlights(this.sdk, this.config);
         this.issuesMatchCounts = issuesResult.matchCounts;
+        this.issuesMatchSegmentIds = issuesResult.segmentIdsByIssue;
         this.issuesTotal = issuesResult.totalFeatures;
         this.onIssuesCountsUpdated?.();
 
         return result;
+    }
+
+    /**
+     * Pan/select the segment closest to the viewport center from the given
+     * list. Used by rule badges to jump to a representative match.
+     */
+    jumpToNearestSegment(segmentIds: readonly number[]): boolean {
+        return jumpToNearestSegment(this.sdk, segmentIds);
     }
 
     /** Wire up the layer, build the side-panel and subscribe to SDK events. */

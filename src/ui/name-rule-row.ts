@@ -22,6 +22,8 @@ export interface NameRuleRowDeps {
     messages: Messages;
     onChange: () => void;
     onRemove: () => void;
+    /** Invoked when the user clicks the match-count badge. */
+    onJump?: () => void;
 }
 
 /**
@@ -31,7 +33,7 @@ export interface NameRuleRowDeps {
  *   3) road-type chip picker (multi-select, click to toggle)
  */
 export function createNameRuleRow(deps: NameRuleRowDeps): NameRuleRowHandle {
-    const { rule, profile, messages, onChange, onRemove } = deps;
+    const { rule, profile, messages, onChange, onRemove, onJump } = deps;
 
     const row = document.createElement('div');
     row.className = 'wme-vbr-row';
@@ -54,6 +56,12 @@ export function createNameRuleRow(deps: NameRuleRowDeps): NameRuleRowHandle {
     badge.className = 'wme-vbr-badge hidden';
     badge.textContent = '0';
     badge.title = messages.badgeTitle;
+    if (onJump) {
+        badge.classList.add('wme-vbr-badge-clickable');
+        badge.addEventListener('click', () => {
+            if (lastCount > 0 && rule.enabled) onJump();
+        });
+    }
 
     const patternInput = document.createElement('input');
     patternInput.type = 'text';

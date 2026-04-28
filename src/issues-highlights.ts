@@ -32,6 +32,7 @@ export function setupIssuesLayer(sdk: WmeSDK): void {
 
 export interface IssuesRefreshResult {
     matchCounts: Record<IssueId, number>;
+    segmentIdsByIssue: Record<IssueId, number[]>;
     totalFeatures: number;
 }
 
@@ -56,9 +57,14 @@ export function refreshIssuesHighlights(
         veryShort: 0,
         noSpeedLimit: 0,
     };
+    const segmentIdsByIssue: Record<IssueId, number[]> = {
+        unnamed: [],
+        veryShort: [],
+        noSpeedLimit: [],
+    };
 
     if (!anyEnabled) {
-        return { matchCounts, totalFeatures: 0 };
+        return { matchCounts, segmentIdsByIssue, totalFeatures: 0 };
     }
 
     const streetCache = new Map<number, Street | null>();
@@ -81,6 +87,7 @@ export function refreshIssuesHighlights(
         if (!result || !seg.geometry) continue;
 
         matchCounts[result.issueId]++;
+        segmentIdsByIssue[result.issueId].push(seg.id);
         features.push({
             type: 'Feature',
             id: seg.id,
@@ -93,5 +100,5 @@ export function refreshIssuesHighlights(
         sdk.Map.addFeaturesToLayer({ features, layerName: ISSUES_LAYER_NAME });
     }
 
-    return { matchCounts, totalFeatures: features.length };
+    return { matchCounts, segmentIdsByIssue, totalFeatures: features.length };
 }

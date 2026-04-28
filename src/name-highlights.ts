@@ -32,6 +32,7 @@ export function setupNameHighlightLayer(sdk: WmeSDK): void {
 
 export interface NameRefreshResult {
     matchCounts: Record<string, number>;
+    segmentIdsByRule: Record<string, number[]>;
     totalFeatures: number;
 }
 
@@ -44,7 +45,7 @@ export function refreshNameHighlights(sdk: WmeSDK, config: Config): NameRefreshR
 
     const rules = (config.nameRules ?? []).filter((r) => r.enabled && r.pattern.trim());
     if (rules.length === 0) {
-        return { matchCounts: {}, totalFeatures: 0 };
+        return { matchCounts: {}, segmentIdsByRule: {}, totalFeatures: 0 };
     }
 
     const streetCache = new Map<number, Street | null>();
@@ -61,6 +62,7 @@ export function refreshNameHighlights(sdk: WmeSDK, config: Config): NameRefreshR
     };
 
     const matchCounts: Record<string, number> = {};
+    const segmentIdsByRule: Record<string, number[]> = {};
     const features: SdkFeature[] = [];
 
     for (const seg of sdk.DataModel.Segments.getAll()) {
@@ -68,6 +70,7 @@ export function refreshNameHighlights(sdk: WmeSDK, config: Config): NameRefreshR
         if (!result || !seg.geometry) continue;
 
         matchCounts[result.ruleId] = (matchCounts[result.ruleId] ?? 0) + 1;
+        (segmentIdsByRule[result.ruleId] ??= []).push(seg.id);
         features.push({
             type: 'Feature',
             id: seg.id,
@@ -80,5 +83,5 @@ export function refreshNameHighlights(sdk: WmeSDK, config: Config): NameRefreshR
         sdk.Map.addFeaturesToLayer({ features, layerName: NAME_LAYER_NAME });
     }
 
-    return { matchCounts, totalFeatures: features.length };
+    return { matchCounts, segmentIdsByRule, totalFeatures: features.length };
 }
