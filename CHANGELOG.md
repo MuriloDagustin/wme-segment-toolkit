@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/MuriloDagustin/wme-segment-toolkit/compare/v1.1.0...v1.2.0) (2026-04-28)
+
+
+### Features
+
+* **ui:** add Stats tab with live selection statistics ([a7188b8](https://github.com/MuriloDagustin/wme-segment-toolkit/commit/a7188b80608484ec8c3c6e31fe6c3c5121e8bb05))
+
 ## [1.1.0](https://github.com/MuriloDagustin/wme-segment-toolkit/compare/v1.0.0...v1.1.0) (2026-04-28)
 
 
